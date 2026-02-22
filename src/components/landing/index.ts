@@ -1,0 +1,11 @@
+export { LandingHeader } from "./header";
+export { HeroSection } from "./hero-section";
+export { SocialProof } from "./social-proof";
+export { FeaturesSection } from "./features-section";
+export { HowItWorks } from "./how-it-works";
+export { Testimonials } from "./testimonials";
+export { CTASection } from "./cta-section";
+export { Footer } from "./footer";
+export { AnimatedBackground } from "./animated-background";
+export { CodeReviewMockup } from "./code-review-mockup";
+export { Logo } from "./logo";
