@@ -169,12 +169,12 @@ export const analyticsRouter = createTRPCRouter({
   }),
 
   /**
-   * Returns activity heatmap data: review count per day for the last 12 weeks.
+   * Returns activity heatmap data: review count per day for the last 52 weeks (GitHub-style).
    * @returns Array of { date: string, count: number, week: number, day: number }
    */
   activityHeatmap: protectedProcedure.query(async ({ ctx }) => {
     const since = new Date();
-    since.setDate(since.getDate() - 83); // 12 weeks back
+    since.setDate(since.getDate() - 363); // 52 weeks back (364 days)
 
     const reviews = await ctx.db.review.findMany({
       where: {
@@ -197,9 +197,9 @@ export const analyticsRouter = createTRPCRouter({
       day: number;
     }> = [];
 
-    for (let i = 0; i < 84; i++) {
+    for (let i = 0; i < 364; i++) {
       const d = new Date();
-      d.setDate(d.getDate() - (83 - i));
+      d.setDate(d.getDate() - (363 - i));
       const key = d.toISOString().split("T")[0] as string;
       result.push({
         date: key,

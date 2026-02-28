@@ -1,5 +1,8 @@
 "use client";
 
+import CalendarHeatmap from "react-calendar-heatmap";
+import "react-calendar-heatmap/dist/styles.css";
+import "@/components/analytics/activity-heatmap.css";
 import {
   Card,
   CardContent,
@@ -21,28 +24,37 @@ interface ActivityHeatmapProps {
   isLoading?: boolean;
 }
 
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** Value shape passed by react-calendar-heatmap to classForValue / titleForValue */
+type HeatmapDayValue = { date: string; count?: number } | undefined;
 
-/** Ordered intensity steps for the legend (count → index) */
+/** Ordered intensity steps for the legend (count → level 0–4) */
 const LEGEND_STEPS = [0, 1, 3, 5, 7] as const;
 
 /**
- * Maps a review count to a colour intensity class.
- * @param count - number of reviews on that day
- * @returns Tailwind bg class string
+ * Maps a contribution count to GitHub-style level (0–4) for CSS class heatmap-0 … heatmap-4.
+ * @param count - number of contributions on that day
+ * @returns level 0 (empty) through 4 (most)
  */
-function getIntensityClass(count: number): string {
-  if (count === 0) return "bg-muted/60 dark:bg-muted/30";
-  if (count <= 1) return "bg-blue-200 dark:bg-blue-900/80";
-  if (count <= 3) return "bg-blue-400 dark:bg-blue-700";
-  if (count <= 5) return "bg-blue-600 dark:bg-blue-500";
-  return "bg-blue-800 dark:bg-blue-400";
+function getHeatmapLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+  if (count === 0) return 0;
+  if (count <= 1) return 1;
+  if (count <= 3) return 2;
+  if (count <= 5) return 3;
+  return 4;
 }
 
 /**
- * ActivityHeatmap — GitHub-style 12-week contribution grid.
- * Each cell is a day; colour intensity represents review volume.
- * @param data - array of { date, count, week, day } — 84 entries
+ * Formats a date string (YYYY-MM-DD) for GitHub-style tooltip: "Month Day" (e.g. "Jan 15").
+ */
+function formatTooltipDate(dateStr: string): string {
+  const d = new Date(dateStr + "Z");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/**
+ * ActivityHeatmap — GitHub profile–style contribution graph (last 52 weeks).
+ * Layout: weeks as columns, days as rows; tooltips and colors match GitHub.
+ * @param data - array of { date, count, week, day } — 364 entries (52 weeks)
  * @param isLoading - whether data is loading
  */
 export function ActivityHeatmap({
@@ -68,111 +80,77 @@ export function ActivityHeatmap({
     );
   }
 
-  const numWeeks = 12;
-
-  // Build week × day grid
-  const grid: (HeatmapCell | null)[][] = Array.from({ length: numWeeks }, () =>
-    Array.from({ length: 7 }, () => null),
-  );
-
-  for (const cell of data) {
-    if (cell.week < numWeeks && cell.day < 7) {
-      grid[cell.week]![cell.day] = cell;
-    }
-  }
-
+  const values = data.map((d) => ({ date: d.date, count: d.count }));
   const totalReviews = data.reduce((sum, d) => sum + d.count, 0);
-
-  // Month labels — only show when month changes
-  const monthLabels: string[] = [];
-  for (let w = 0; w < numWeeks; w++) {
-    const firstCell = grid[w]?.find((c) => c !== null);
-    if (firstCell) {
-      const d = new Date(firstCell.date);
-      const label = d.toLocaleDateString("en-US", { month: "short" });
-      monthLabels.push(monthLabels[monthLabels.length - 1] !== label ? label : "");
-    } else {
-      monthLabels.push("");
-    }
-  }
-
-  const CELL = "size-[18px]";
+  const startDate = data[0]?.date ?? new Date().toISOString().split("T")[0];
+  const endDate =
+    data[data.length - 1]?.date ?? new Date().toISOString().split("T")[0];
 
   return (
     <Card className="rounded-xl">
       <CardHeader className="px-6 pt-6 pb-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base font-semibold">Activity Heatmap</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Contributions
+            </CardTitle>
             <CardDescription className="mt-0.5 text-sm">
-              {totalReviews} review{totalReviews !== 1 ? "s" : ""} in the last 12 weeks
+              {totalReviews} contribution{totalReviews !== 1 ? "s" : ""} in the
+              last year
             </CardDescription>
           </div>
-          {/* Legend */}
+          {/* Legend — GitHub style: Less [squares] More */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>Less</span>
-            {LEGEND_STEPS.map((n) => (
-              <div
-                key={n}
-                className={cn("size-3.5 rounded-sm", getIntensityClass(n))}
-              />
-            ))}
+            {LEGEND_STEPS.map((n) => {
+              const level = getHeatmapLevel(n);
+              return (
+                <div
+                  key={n}
+                  className={cn(
+                    "size-3 rounded-sm",
+                    level === 0 && "bg-[#ebedf0] dark:bg-[#161b22]",
+                    level === 1 && "bg-[#9be9a8] dark:bg-[#0e4429]",
+                    level === 2 && "bg-[#40c463] dark:bg-[#006d32]",
+                    level === 3 && "bg-[#30a14e] dark:bg-[#26a641]",
+                    level === 4 && "bg-[#216e39] dark:bg-[#39d353]",
+                  )}
+                />
+              );
+            })}
             <span>More</span>
           </div>
         </div>
       </CardHeader>
       <CardContent className="px-6 pb-6 pt-3">
-        <div className="overflow-x-auto pb-1">
-          <div className="inline-flex flex-col gap-1.5" style={{ minWidth: "max-content" }}>
-            {/* Month labels row */}
-            <div className="flex gap-1.5 pl-9">
-              {monthLabels.map((label, w) => (
-                <div
-                  key={w}
-                  className={cn(CELL, "flex items-end text-[10px] font-medium text-muted-foreground")}
-                >
-                  {label}
-                </div>
-              ))}
-            </div>
-
-            {/* Day rows */}
-            {DAY_LABELS.map((dayLabel, dayIdx) => (
-              <div key={dayIdx} className="flex items-center gap-1.5">
-                {/* Day label — only odd indices to avoid crowding */}
-                <span className="w-8 text-right text-[10px] text-muted-foreground">
-                  {dayIdx % 2 === 1 ? dayLabel : ""}
-                </span>
-
-                {grid.map((week, weekIdx) => {
-                  const cell = week[dayIdx];
-
-                  if (!cell) {
-                    return (
-                      <div
-                        key={weekIdx}
-                        className={cn(CELL, "rounded-sm bg-transparent")}
-                      />
-                    );
-                  }
-
-                  const title = `${cell.date}: ${cell.count} review${cell.count !== 1 ? "s" : ""}`;
-
-                  return (
-                    <div
-                      key={weekIdx}
-                      title={title}
-                      className={cn(
-                        CELL,
-                        "rounded-sm transition-all duration-150 hover:scale-110 hover:ring-2 hover:ring-blue-400/60 cursor-default",
-                        getIntensityClass(cell.count),
-                      )}
-                    />
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+        <div className="activity-heatmap activity-heatmap-container overflow-x-auto">
+          <CalendarHeatmap
+            startDate={startDate}
+            endDate={endDate}
+            values={values}
+            horizontal
+            showMonthLabels
+            showWeekdayLabels
+            gutterSize={2}
+            classForValue={(value: HeatmapDayValue) => {
+              if (!value || value.count === 0) return "heatmap-0";
+              return `heatmap-${getHeatmapLevel(value.count ?? 0)}`;
+            }}
+            titleForValue={(value: HeatmapDayValue) => {
+              if (!value) return "";
+              const count = value.count ?? 0;
+              const dateLabel = formatTooltipDate(value.date);
+              if (count === 0) {
+                return `No contributions on ${dateLabel}`;
+              }
+              return `${count} contribution${count !== 1 ? "s" : ""} on ${dateLabel}`;
+            }}
+            monthLabels={[
+              "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+            ]}
+            weekdayLabels={["", "Mon", "", "Wed", "", "Fri", ""]}
+          />
         </div>
       </CardContent>
     </Card>
