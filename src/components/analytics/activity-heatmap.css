@@ -1,0 +1,72 @@
+.activity-heatmap-container {
+  width: 100%;
+  min-width: 0;
+}
+
+.activity-heatmap-container svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: middle;
+}
+
+.activity-heatmap-container .react-calendar-heatmap text,
+.activity-heatmap.react-calendar-heatmap text {
+  font-size: 7px !important;
+  fill: #57606a;
+}
+
+.dark .activity-heatmap-container .react-calendar-heatmap text,
+.dark .activity-heatmap.react-calendar-heatmap text {
+  fill: #8b949e;
+}
+
+.activity-heatmap.react-calendar-heatmap rect {
+  rx: 2;
+  ry: 2;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.activity-heatmap.react-calendar-heatmap rect:hover {
+  stroke: #1f2328;
+  stroke-width: 1px;
+}
+
+.dark .activity-heatmap.react-calendar-heatmap rect:hover {
+  stroke: #8b949e;
+}
+
+/* Light mode — GitHub exact palette */
+.activity-heatmap .heatmap-0 {
+  fill: #ebedf0;
+}
+.activity-heatmap .heatmap-1 {
+  fill: #9be9a8;
+}
+.activity-heatmap .heatmap-2 {
+  fill: #40c463;
+}
+.activity-heatmap .heatmap-3 {
+  fill: #30a14e;
+}
+.activity-heatmap .heatmap-4 {
+  fill: #216e39;
+}
+
+/* Dark mode — GitHub exact palette */
+.dark .activity-heatmap .heatmap-0 {
+  fill: #161b22;
+}
+.dark .activity-heatmap .heatmap-1 {
+  fill: #0e4429;
+}
+.dark .activity-heatmap .heatmap-2 {
+  fill: #006d32;
+}
+.dark .activity-heatmap .heatmap-3 {
+  fill: #26a641;
+}
+.dark .activity-heatmap .heatmap-4 {
+  fill: #39d353;
+}
