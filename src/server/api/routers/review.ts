@@ -129,4 +129,35 @@ export const reviewRouter = createTRPCRouter({
 
       return review;
     }),
+  /**
+   * Lists completed reviews for a given PR, for comparison.
+   * Returns reviews ordered by createdAt desc (newest first).
+   */
+  listForPR: protectedProcedure
+    .input(
+      z.object({
+        repositoryId: z.string(),
+        prNumber: z.number(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const reviews = await ctx.db.review.findMany({
+        where: {
+          repositoryId: input.repositoryId,
+          prNumber: input.prNumber,
+          userId: ctx.user.id,
+          status: "COMPLETED",
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          createdAt: true,
+          riskScore: true,
+          summary: true,
+          comments: true,
+        },
+      });
+
+      return reviews;
+    }),
 });

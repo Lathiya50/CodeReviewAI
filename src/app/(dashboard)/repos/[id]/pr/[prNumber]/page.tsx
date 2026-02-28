@@ -25,6 +25,7 @@ import {
   ArrowRight,
   Wand2,
   ScanSearch,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DiffViewer } from "@/components/diff-viewer";
@@ -269,6 +270,19 @@ export default function PullRequestDetailPage({ params }: PageProps) {
                     {latestReview.data ? "Re-run" : "Review"}
                   </Button>
                 )}
+                <Link
+                  href={`/repos/${id}/pr/${prNumber}/compare`}
+                  className="inline-flex"
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 h-auto py-1 px-2 text-xs"
+                  >
+                    <BarChart3 className="size-3.5" />
+                    Compare reviews
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
