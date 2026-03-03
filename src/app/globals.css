@@ -126,3 +126,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Shimmer skeleton animation */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

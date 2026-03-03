@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { RepoDetailSkeleton, PRListItemSkeleton } from "@/components/shimmer-skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowLeft,
@@ -52,22 +52,7 @@ export default function RepositoryDetailPage({ params }: PageProps) {
   };
 
   if (repository.isLoading) {
-    return (
-      <div className="space-y-8">
-        <div className="flex items-center gap-4">
-          <Skeleton className="size-9 rounded-lg" />
-          <div className="space-y-2">
-            <Skeleton className="h-7 w-64" />
-            <Skeleton className="h-4 w-40" />
-          </div>
-        </div>
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
+    return <RepoDetailSkeleton />;
   }
 
   if (!repository.data) {
@@ -189,7 +174,7 @@ export default function RepositoryDetailPage({ params }: PageProps) {
       <div className="space-y-3">
         {pullRequests.isLoading ? (
           [...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <PRListItemSkeleton key={i} />
           ))
         ) : pullRequests.error ? (
           <Card className="border-destructive/50">

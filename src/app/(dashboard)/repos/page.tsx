@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  RepoCardSkeleton,
+  ImportRepoSkeleton,
+} from "@/components/shimmer-skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,9 +201,9 @@ export default function ReposPage() {
 
           <CardContent className="p-0">
             {githubRepos.isLoading ? (
-              <div className="p-6 space-y-3">
+              <div className="divide-y divide-border/60">
                 {[...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  <ImportRepoSkeleton key={i} />
                 ))}
               </div>
             ) : githubRepos.error ? (
@@ -336,9 +339,9 @@ export default function ReposPage() {
         </div>
 
         {connectedRepos.isLoading ? (
-          <div className="p-6 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+              <RepoCardSkeleton key={i} />
             ))}
           </div>
         ) : connectedRepos.data?.length === 0 ? (

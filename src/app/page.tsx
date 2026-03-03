@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -12,9 +13,51 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+export const metadata: Metadata = {
+  title: "CodeReviewAI — AI-Powered Code Reviews",
+  description:
+    "Automated code reviews that catch bugs, security issues, and maintainability problems before they reach production. Ship better code, faster.",
+  alternates: {
+    canonical: "/",
+  },
+};
+
+/** JSON-LD structured data for the landing page */
+function LandingJsonLd() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "CodeReviewAI",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Web",
+    description:
+      "Automated AI-powered code reviews that catch bugs, security issues, and maintainability problems before they reach production.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    featureList: [
+      "Instant AI feedback on pull requests",
+      "Security vulnerability scanning",
+      "GitHub integration",
+      "Risk scoring",
+      "Private repository support",
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
+      <LandingJsonLd />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">

@@ -6,7 +6,10 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  PRHeaderSkeleton,
+  DiffFileSkeleton,
+} from "@/components/shimmer-skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowLeft,
@@ -76,19 +79,7 @@ export default function PullRequestDetailPage({ params }: PageProps) {
     latestReview.data?.status === "PROCESSING";
 
   if (pr.isLoading) {
-    return (
-      <div className="space-y-8">
-        <div className="flex items-center gap-4">
-          <Skeleton className="size-10 rounded-lg" />
-          <div className="space-y-2">
-            <Skeleton className="h-7 w-96" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        </div>
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-      </div>
-    );
+    return <PRHeaderSkeleton />;
   }
 
   if (pr.error || !pr.data) {
@@ -356,7 +347,7 @@ export default function PullRequestDetailPage({ params }: PageProps) {
           {files.isLoading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl" />
+                <DiffFileSkeleton key={i} />
               ))}
             </div>
           ) : files.error ? (

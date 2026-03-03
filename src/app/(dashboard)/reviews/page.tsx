@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ReviewCardSkeleton } from "@/components/shimmer-skeleton";
 import {
   GitPullRequest,
   Clock,
@@ -111,9 +111,9 @@ export default function ReviewsPage() {
       </div>
 
       {reviews.isLoading ? (
-        <div>
+        <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+            <ReviewCardSkeleton key={i} />
           ))}
         </div>
       ) : reviews.error ? (
