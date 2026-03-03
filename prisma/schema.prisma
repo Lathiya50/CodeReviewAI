@@ -95,19 +95,21 @@ model Repository {
 }
 
 model Review {
-  id           String       @id @default(cuid())
-  repositoryId String
-  userId       String
-  prNumber     Int
-  prTitle      String
-  prUrl        String
-  status       ReviewStatus @default(PENDING)
-  summary      String?      @db.Text
-  riskScore    Int?
-  comments     Json?
-  error        String?      @db.Text
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  repositoryId    String
+  userId          String
+  prNumber        Int
+  prTitle         String
+  prUrl           String
+  status          ReviewStatus @default(PENDING)
+  summary         String?      @db.Text
+  riskScore       Int?
+  comments        Json?
+  error           String?      @db.Text
+  postedToGithub  Boolean      @default(false)
+  githubReviewId  BigInt?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)

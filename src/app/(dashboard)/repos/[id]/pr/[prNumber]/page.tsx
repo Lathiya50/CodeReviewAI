@@ -320,7 +320,11 @@ export default function PullRequestDetailPage({ params }: PageProps) {
       {activeTab === "review" && (
         <div>
           {latestReview.data ? (
-            <ReviewResult review={latestReview.data} />
+            <ReviewResult
+              review={latestReview.data}
+              repositoryId={id}
+              prNumber={prNum}
+            />
           ) : (
             <Card>
               <CardContent className="py-16 text-center">

@@ -1,9 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Bug,
   Shield,
@@ -22,8 +33,14 @@ import {
   ShieldCheck,
   ShieldAlert,
   ShieldX,
+  Github,
+  Loader2,
+  MessageSquare,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc/client";
 
 interface ReviewComment {
   file: string;
@@ -43,10 +60,120 @@ interface ReviewResultProps {
     comments: ReviewComment[] | unknown;
     error: string | null;
     createdAt: Date;
+    prUrl?: string;
+    postedToGithub?: boolean;
+    githubReviewId?: bigint | number | null;
   };
+  repositoryId?: string;
+  prNumber?: number;
 }
 
-export function ReviewResult({ review }: ReviewResultProps) {
+type GitHubEventType = "COMMENT" | "REQUEST_CHANGES";
+
+/**
+ * Renders a complete AI review result with risk score, severity breakdown,
+ * comments, and inline PR comment posting to GitHub.
+ * @param review - The review data object
+ * @param repositoryId - Optional repository ID for GitHub posting
+ * @param prNumber - Optional PR number for GitHub posting
+ */
+export function ReviewResult({
+  review,
+  repositoryId,
+  prNumber,
+}: ReviewResultProps) {
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
+    new Set(),
+  );
+  const [eventType, setEventType] = useState<GitHubEventType>("COMMENT");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [postSuccess, setPostSuccess] = useState<{
+    postedCount: number;
+    skippedCount: number;
+    forcedComment: boolean;
+  } | null>(null);
+
+  const hasPostedBefore = review.postedToGithub || postSuccess !== null;
+  const canPostToGithub =
+    repositoryId && prNumber && review.status === "COMPLETED";
+
+  const comments = useMemo(
+    () =>
+      Array.isArray(review.comments)
+        ? (review.comments as ReviewComment[])
+        : [],
+    [review.comments],
+  );
+
+  const hasInitialized = useRef(false);
+
+  React.useEffect(() => {
+    if (!hasInitialized.current && comments.length > 0 && canPostToGithub) {
+      hasInitialized.current = true;
+      setSelectedIndices(new Set(comments.map((_, i) => i)));
+    }
+  }, [comments, canPostToGithub]);
+
+  const utils = trpc.useUtils();
+
+  const postToGithub = trpc.review.postToGithub.useMutation({
+    onSuccess: (data) => {
+      setPostSuccess({
+        postedCount: data.postedCount,
+        skippedCount: data.skippedCount,
+        forcedComment: data.forcedComment ?? false,
+      });
+      setShowConfirmDialog(false);
+      setSelectedIndices(new Set());
+      if (repositoryId && prNumber) {
+        utils.review.getLatestForPR.invalidate({ repositoryId, prNumber });
+      }
+    },
+  });
+
+  /**
+   * Toggles a comment's selection state by index.
+   * @param index - Comment index in the comments array
+   */
+  const toggleComment = useCallback((index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  /** Selects all comments. */
+  const selectAll = useCallback(() => {
+    setSelectedIndices(new Set(comments.map((_, i) => i)));
+  }, [comments]);
+
+  /** Deselects all comments. */
+  const selectNone = useCallback(() => {
+    setSelectedIndices(new Set());
+  }, []);
+
+  /** Submits the selected comments to GitHub via the tRPC mutation. */
+  const handlePostToGithub = useCallback(() => {
+    if (!repositoryId || !prNumber) return;
+    postToGithub.mutate({
+      reviewId: review.id,
+      commentIndices: Array.from(selectedIndices),
+      event: eventType,
+    });
+  }, [
+    repositoryId,
+    prNumber,
+    postToGithub,
+    review.id,
+    selectedIndices,
+    eventType,
+  ]);
+
   if (review.status === "PENDING") {
     return (
       <Card>
@@ -156,10 +283,6 @@ export function ReviewResult({ review }: ReviewResultProps) {
     );
   }
 
-  const comments = Array.isArray(review.comments)
-    ? (review.comments as ReviewComment[])
-    : [];
-
   const severityCounts = {
     critical: comments.filter((c) => c.severity === "critical").length,
     high: comments.filter((c) => c.severity === "high").length,
@@ -171,6 +294,48 @@ export function ReviewResult({ review }: ReviewResultProps) {
 
   return (
     <div className="space-y-6">
+      {/* Posted to GitHub Banner */}
+      {hasPostedBefore && (
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                <Github className="size-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  Posted to GitHub
+                  {postSuccess &&
+                    ` — ${postSuccess.postedCount} comment${postSuccess.postedCount !== 1 ? "s" : ""} posted${postSuccess.skippedCount > 0 ? `, ${postSuccess.skippedCount} skipped` : ""}`}
+                </p>
+                {postSuccess?.forcedComment && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    Posted as Comment instead of Request Changes (GitHub
+                    doesn&apos;t allow requesting changes on your own PR)
+                  </p>
+                )}
+              </div>
+              {review.githubReviewId && (
+                <a
+                  href={review.prUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 h-auto py-1 px-2 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                  >
+                    <ExternalLink className="size-3" />
+                    View on GitHub
+                  </Button>
+                </a>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="overflow-hidden">
         <CardContent className="p-6 space-y-6">
           <RiskScoreSection score={review.riskScore ?? 0} />
@@ -252,20 +417,163 @@ export function ReviewResult({ review }: ReviewResultProps) {
             <h2 className="text-sm font-medium text-muted-foreground">
               Review Comments
             </h2>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {comments.length} {comments.length === 1 ? "issue" : "issues"}
-            </span>
+            <div className="flex items-center gap-3">
+              {canPostToGithub && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={selectAll}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Select all
+                  </button>
+                  <span className="text-xs text-muted-foreground">/</span>
+                  <button
+                    onClick={selectNone}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    None
+                  </button>
+                </div>
+              )}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {comments.length} {comments.length === 1 ? "issue" : "issues"}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2">
             {comments.map((comment, index) => (
-              <CommentCard key={index} comment={comment} index={index} />
+              <CommentCard
+                key={index}
+                comment={comment}
+                index={index}
+                selectable={!!canPostToGithub}
+                selected={selectedIndices.has(index)}
+                onToggleSelect={toggleComment}
+              />
             ))}
           </div>
         </div>
       ) : (
         review.status === "COMPLETED" && <NoIssuesCard />
       )}
+
+      {/* Floating Action Bar for posting to GitHub */}
+      {canPostToGithub && comments.length > 0 && (
+        <div className="sticky bottom-4 z-10">
+          <Card className="border-primary/20 shadow-lg bg-background/95 backdrop-blur-sm">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-4">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <Github className="size-4 text-primary" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">
+                    {selectedIndices.size} of {comments.length} comment
+                    {comments.length !== 1 ? "s" : ""} selected
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center rounded-lg border bg-muted/50 p-0.5">
+                    <button
+                      onClick={() => setEventType("COMMENT")}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        eventType === "COMMENT"
+                          ? "bg-background shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <MessageSquare className="size-3" />
+                      Comment
+                    </button>
+                    <button
+                      onClick={() => setEventType("REQUEST_CHANGES")}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        eventType === "REQUEST_CHANGES"
+                          ? "bg-background shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <AlertTriangle className="size-3" />
+                      Request Changes
+                    </button>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    disabled={selectedIndices.size === 0 || postToGithub.isPending}
+                    onClick={() => setShowConfirmDialog(true)}
+                    className="gap-1.5"
+                  >
+                    {postToGithub.isPending ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Github className="size-3.5" />
+                    )}
+                    Post to GitHub
+                  </Button>
+                </div>
+              </div>
+
+              {postToGithub.error && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-destructive">
+                  <XCircle className="size-3.5 shrink-0" />
+                  {postToGithub.error.message}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Post comments to GitHub?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will post{" "}
+              <span className="font-semibold text-foreground">
+                {selectedIndices.size} comment
+                {selectedIndices.size !== 1 ? "s" : ""}
+              </span>{" "}
+              as a{" "}
+              <span className="font-semibold text-foreground">
+                {eventType === "COMMENT"
+                  ? "comment (neutral)"
+                  : "request changes (blocking)"}
+              </span>{" "}
+              review on the pull request. Each post creates a new review on
+              GitHub.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={postToGithub.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePostToGithub}
+              disabled={postToGithub.isPending}
+            >
+              {postToGithub.isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin mr-1.5" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  <Github className="size-4 mr-1.5" />
+                  Post to GitHub
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -296,9 +604,15 @@ function NoIssuesCard() {
 function CommentCard({
   comment,
   index,
+  selectable,
+  selected,
+  onToggleSelect,
 }: {
   comment: ReviewComment;
   index: number;
+  selectable: boolean;
+  selected: boolean;
+  onToggleSelect: (index: number) => void;
 }) {
   const [expanded, setExpanded] = useState(index < 3);
   const [copied, setCopied] = useState(false);
@@ -316,95 +630,121 @@ function CommentCard({
   const directory = pathParts.join("/");
 
   return (
-    <Card>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full text-left"
-      >
-        <div className="p-4 flex items-start gap-3">
-          <div
-            className={cn(
-              "my-0.5 w-1 h-12 rounded-full shrink-0",
-              severityConfig.bar,
-            )}
-          />
-
-          <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant={"outline"}
-                className={cn(
-                  "text-[10px] uppercase tracking-wider font-semibold",
-                  severityConfig.badge,
-                )}
-              >
-                {comment.severity}
-              </Badge>
-
-              {comment.category && (
-                <Badge variant={"secondary"} className="gap-1 text-xs">
-                  {React.createElement(CategoryIcon, {
-                    className: "size-3",
-                  })}
-                  {comment.category}
-                </Badge>
-              )}
-
-              <div className="flex-1" />
-
-              {expanded ? (
-                <ChevronDown className="size-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="size-4 text-muted-foreground" />
-              )}
-            </div>
-
-            <p
-              className={cn(
-                "text-sm leading-relaxed",
-                !expanded && "line-clamp-2",
-              )}
-            >
-              {comment.message}
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                copyLocation();
-              }}
-              className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <FileCode2 className="size-3.5" />
-              {directory && <span className="opacity-60">{directory}</span>}
-              <span className="font-medium text-foreground ">{fileName}</span>
-              <span className="text-foreground">:</span>
-              <span className="text-primary font-medium">{comment.line}</span>
-              {copied ? (
-                <Check className="size-3.5 text-emerald-500" />
-              ) : (
-                <Copy className="size-3.5 opacity-0 group-hover/file:opacity-100 trantransition-opacity" />
-              )}
-            </button>
-          </div>
-        </div>
-      </button>
-
-      {expanded && comment.suggestion && (
-        <div className="px-4 pb-4">
-          <div className="ml-4 rounded-lg bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1 rounded-md bg-emerald-500/20">
-                <Lightbulb className="size-3.5 text-emerald-500" />
-              </div>
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                Suggested Fix
-              </span>
-            </div>
-            <p className="text-sm leading-relaxed pl-7">{comment.suggestion}</p>
-          </div>
-        </div>
+    <Card
+      className={cn(
+        "transition-colors",
+        selectable && selected && "ring-1 ring-primary/30 bg-primary/[0.02]",
       )}
+    >
+      <div className="flex items-start">
+        {selectable && (
+          <div className="pt-5 pl-4 pr-1 shrink-0">
+            <Checkbox
+              checked={selected}
+              onCheckedChange={() => onToggleSelect(index)}
+            />
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-full text-left"
+          >
+            <div className="p-4 flex items-start gap-3">
+              <div
+                className={cn(
+                  "my-0.5 w-1 h-12 rounded-full shrink-0",
+                  severityConfig.bar,
+                )}
+              />
+
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant={"outline"}
+                    className={cn(
+                      "text-[10px] uppercase tracking-wider font-semibold",
+                      severityConfig.badge,
+                    )}
+                  >
+                    {comment.severity}
+                  </Badge>
+
+                  {comment.category && (
+                    <Badge variant={"secondary"} className="gap-1 text-xs">
+                      {React.createElement(CategoryIcon, {
+                        className: "size-3",
+                      })}
+                      {comment.category}
+                    </Badge>
+                  )}
+
+                  <div className="flex-1" />
+
+                  {expanded ? (
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  )}
+                </div>
+
+                <p
+                  className={cn(
+                    "text-sm leading-relaxed",
+                    !expanded && "line-clamp-2",
+                  )}
+                >
+                  {comment.message}
+                </p>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyLocation();
+                  }}
+                  className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <FileCode2 className="size-3.5" />
+                  {directory && (
+                    <span className="opacity-60">{directory}</span>
+                  )}
+                  <span className="font-medium text-foreground ">
+                    {fileName}
+                  </span>
+                  <span className="text-foreground">:</span>
+                  <span className="text-primary font-medium">
+                    {comment.line}
+                  </span>
+                  {copied ? (
+                    <Check className="size-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="size-3.5 opacity-0 group-hover/file:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </button>
+
+          {expanded && comment.suggestion && (
+            <div className="px-4 pb-4">
+              <div className="ml-4 rounded-lg bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1 rounded-md bg-emerald-500/20">
+                    <Lightbulb className="size-3.5 text-emerald-500" />
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    Suggested Fix
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed pl-7">
+                  {comment.suggestion}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
