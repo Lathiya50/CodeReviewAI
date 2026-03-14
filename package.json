@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:push": "prisma db push",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/genai": "^1.43.0",
@@ -45,6 +46,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "husky": "^9.1.7",
     "prisma": "^6.19.2",
     "shadcn": "^3.8.4",
     "tailwindcss": "^4",
