@@ -1,11 +1,10 @@
 "use client";
 
-import { use, useState, useMemo, useEffect } from "react";
+import { use, useState, useMemo } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -56,30 +55,32 @@ export default function ReviewComparePage({ params }: PageProps) {
     { enabled: !Number.isNaN(prNum) },
   );
 
-  const reviews = reviewsQuery.data ?? [];
+  const reviews = useMemo(() => reviewsQuery.data ?? [], [reviewsQuery.data]);
   const [baselineId, setBaselineId] = useState<string | "">("");
   const [currentId, setCurrentId] = useState<string | "">("");
 
   // Default to oldest (baseline) and newest (current) when data loads
-  useEffect(() => {
-    if (reviews.length === 0) return;
+  const resolvedBaselineId = useMemo(() => {
+    if (reviews.length === 0) return baselineId;
     const newest = reviews[0];
     const oldest = reviews[reviews.length - 1];
-    if (reviews.length === 1) {
-      setBaselineId(newest.id);
-      setCurrentId(newest.id);
-    } else {
-      setBaselineId((prev) =>
-        !prev || !reviews.some((r) => r.id === prev) ? oldest.id : prev,
-      );
-      setCurrentId((prev) =>
-        !prev || !reviews.some((r) => r.id === prev) ? newest.id : prev,
-      );
-    }
-  }, [reviews]);
+    if (reviews.length === 1) return newest.id;
+    return !baselineId || !reviews.some((r) => r.id === baselineId)
+      ? oldest.id
+      : baselineId;
+  }, [reviews, baselineId]);
 
-  const baseline = reviews.find((r) => r.id === baselineId);
-  const current = reviews.find((r) => r.id === currentId);
+  const resolvedCurrentId = useMemo(() => {
+    if (reviews.length === 0) return currentId;
+    const newest = reviews[0];
+    if (reviews.length === 1) return newest.id;
+    return !currentId || !reviews.some((r) => r.id === currentId)
+      ? newest.id
+      : currentId;
+  }, [reviews, currentId]);
+
+  const baseline = reviews.find((r) => r.id === resolvedBaselineId);
+  const current = reviews.find((r) => r.id === resolvedCurrentId);
 
   const comparison = useMemo(() => {
     if (!baseline || !current) return null;
@@ -96,7 +97,7 @@ export default function ReviewComparePage({ params }: PageProps) {
   const isLoading = pr.isLoading || reviewsQuery.isLoading;
   const isInvalidPr = pr.error || !pr.data;
   const hasEnoughReviews = reviews.length >= 2;
-  const sameSelection = baselineId && currentId && baselineId === currentId;
+  const sameSelection = resolvedBaselineId && resolvedCurrentId && resolvedBaselineId === resolvedCurrentId;
 
   if (isLoading) {
     return (
@@ -231,7 +232,7 @@ export default function ReviewComparePage({ params }: PageProps) {
                 </Label>
                 <select
                   id="baseline"
-                  value={baselineId}
+                  value={resolvedBaselineId}
                   onChange={(e) => setBaselineId(e.target.value)}
                   className={cn(
                     "flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm",
@@ -255,7 +256,7 @@ export default function ReviewComparePage({ params }: PageProps) {
                 </Label>
                 <select
                   id="current"
-                  value={currentId}
+                  value={resolvedCurrentId}
                   onChange={(e) => setCurrentId(e.target.value)}
                   className={cn(
                     "flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm",
@@ -379,7 +380,6 @@ export default function ReviewComparePage({ params }: PageProps) {
                       key={`fixed-${i}`}
                       comment={comment}
                       variant="fixed"
-                      index={i}
                     />
                   ))}
                 </div>
@@ -400,7 +400,6 @@ export default function ReviewComparePage({ params }: PageProps) {
                       key={`new-${i}`}
                       comment={comment}
                       variant="new"
-                      index={i}
                     />
                   ))}
                 </div>
@@ -421,7 +420,6 @@ export default function ReviewComparePage({ params }: PageProps) {
                       key={`unchanged-${i}`}
                       comment={comment}
                       variant="unchanged"
-                      index={i}
                     />
                   ))}
                 </div>

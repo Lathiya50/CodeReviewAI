@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +14,7 @@ import {
   Paintbrush,
   Lightbulb,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReviewCommentInput } from "@/lib/review-comparison";
 
@@ -47,27 +47,17 @@ function getSeverityStyle(severity: string) {
   return SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.low;
 }
 
-function getCategoryIcon(category?: string) {
-  switch (category) {
-    case "bug":
-      return Bug;
-    case "security":
-      return Shield;
-    case "performance":
-      return Zap;
-    case "style":
-      return Paintbrush;
-    case "suggestion":
-      return Lightbulb;
-    default:
-      return CircleDot;
-  }
-}
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  bug: Bug,
+  security: Shield,
+  performance: Zap,
+  style: Paintbrush,
+  suggestion: Lightbulb,
+};
 
 export interface ComparisonCommentCardProps {
   comment: ReviewCommentInput;
   variant: "fixed" | "new" | "unchanged";
-  index: number;
 }
 
 /**
@@ -76,10 +66,9 @@ export interface ComparisonCommentCardProps {
 export function ComparisonCommentCard({
   comment,
   variant,
-  index,
 }: ComparisonCommentCardProps) {
   const severityStyle = getSeverityStyle(comment.severity);
-  const CategoryIcon = getCategoryIcon(comment.category);
+  const CategoryIcon = comment.category ? CATEGORY_ICONS[comment.category] ?? CircleDot : CircleDot;
 
   const variantConfig = {
     fixed: {

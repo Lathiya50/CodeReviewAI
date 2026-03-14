@@ -1,4 +1,13 @@
-echo "Running build before push..."
+echo "Running lint check..."
+
+pnpm run lint
+
+if [ $? -ne 0 ]; then
+  echo "Lint failed! Push aborted."
+  exit 1
+fi
+
+echo "Lint passed. Running build..."
 
 pnpm run build
 
@@ -7,4 +16,4 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "Build succeeded. Proceeding with push."
+echo "Lint and build succeeded. Proceeding with push."
