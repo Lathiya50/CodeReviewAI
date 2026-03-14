@@ -17,10 +17,18 @@ export type ReviewPREvent = {
   };
 };
 
+export type ReviewPRCancelledEvent = {
+  name: "review/pr.cancelled";
+  data: {
+    reviewId: string;
+  };
+};
+
 export const reviewPR = inngest.createFunction(
   {
     id: "review-pr",
     retries: 2,
+    cancelOn: [{ event: "review/pr.cancelled", match: "data.reviewId" }],
   },
   { event: "review/pr.requested" },
   async ({ event, step }) => {

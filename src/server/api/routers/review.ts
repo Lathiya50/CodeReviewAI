@@ -162,6 +162,39 @@ export const reviewRouter = createTRPCRouter({
       return reviews;
     }),
 
+  cancel: protectedProcedure
+    .input(z.object({ reviewId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const review = await ctx.db.review.findUnique({
+        where: { id: input.reviewId, userId: ctx.user.id },
+      });
+
+      if (!review) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Review not found",
+        });
+      }
+
+      if (review.status !== "PENDING" && review.status !== "PROCESSING") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Only pending or processing reviews can be cancelled",
+        });
+      }
+
+      await ctx.db.review.update({
+        where: { id: input.reviewId },
+        data: { status: "CANCELLED" },
+      });
+
+      await inngest.send({
+        name: "review/pr.cancelled",
+        data: { reviewId: input.reviewId },
+      });
+
+      return { success: true };
+    }),
 
   postToGithub: protectedProcedure
     .input(

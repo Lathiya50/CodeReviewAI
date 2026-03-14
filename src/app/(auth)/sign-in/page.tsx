@@ -1,11 +1,12 @@
 "use client";
 
 import { FaGithub } from "react-icons/fa";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,11 +18,14 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/repos";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
@@ -32,23 +36,25 @@ export default function SignInPage() {
     const result = await signIn.email({
       email,
       password,
+      rememberMe,
     });
 
     if (result.error) {
       setError(result.error.message || "An error occurred");
       setLoading(false);
     } else {
-      router.push("/repos");
+      router.push(callbackUrl);
     }
   };
 
   const handleGithubSignIn = async () => {
     setError("");
     setLoading(true);
+    await signOut();
 
     await signIn.social({
       provider: "github",
-      callbackURL: "/repos",
+      callbackURL: callbackUrl,
     });
   };
 
@@ -107,6 +113,21 @@ export default function SignInPage() {
               />
             </div>
 
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="rememberMe"
+                checked={rememberMe}
+                onCheckedChange={(v) => setRememberMe(!!v)}
+                disabled={loading}
+              />
+              <Label
+                htmlFor="rememberMe"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Stay logged in for 7 days
+              </Label>
+            </div>
+
             {error && <p className="text-red-500">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={loading}>
@@ -120,5 +141,13 @@ export default function SignInPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInForm />
+    </Suspense>
   );
 }

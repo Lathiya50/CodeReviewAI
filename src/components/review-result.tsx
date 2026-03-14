@@ -283,6 +283,26 @@ export function ReviewResult({
     );
   }
 
+  if (review.status === "CANCELLED") {
+    return (
+      <Card>
+        <CardContent className="py-12 px-6">
+          <div className="flex items-center gap-4">
+            <div className="size-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <XCircle className="size-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium">Review cancelled</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                This review was cancelled. You can start a new one.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const severityCounts = {
     critical: comments.filter((c) => c.severity === "critical").length,
     high: comments.filter((c) => c.severity === "high").length,

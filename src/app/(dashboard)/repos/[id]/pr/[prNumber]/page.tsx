@@ -74,6 +74,12 @@ export default function PullRequestDetailPage({ params }: PageProps) {
     },
   });
 
+  const cancelReview = trpc.review.cancel.useMutation({
+    onSuccess: () => {
+      latestReview.refetch();
+    },
+  });
+
   const isReviewing =
     latestReview.data?.status === "PENDING" ||
     latestReview.data?.status === "PROCESSING";
@@ -243,8 +249,23 @@ export default function PullRequestDetailPage({ params }: PageProps) {
                       : null
                   }
                 />
-                {!isReviewing && <div className="h-4 w-px bg-border" />}
-                {isReviewing ? null : (
+                <div className="h-4 w-px bg-border" />
+                {isReviewing ? (
+                  <Button
+                    variant="outline"
+                    size={"sm"}
+                    onClick={() => {
+                      cancelReview.mutate({
+                        reviewId: latestReview.data!.id,
+                      });
+                    }}
+                    disabled={cancelReview.isPending}
+                    className="gap-1.5 h-auto py-1 px-2 text-xs"
+                  >
+                    <XCircle className="size-3.5" />
+                    Cancel
+                  </Button>
+                ) : (
                   <Button
                     variant="outline"
                     size={"sm"}
@@ -557,6 +578,11 @@ function ReviewStatusBadge({
       label: "Review failed",
       className:
         "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+    },
+    CANCELLED: {
+      icon: XCircle,
+      label: "Review cancelled",
+      className: "bg-muted text-muted-foreground border-border",
     },
   }[status] ?? {
     icon: Clock,

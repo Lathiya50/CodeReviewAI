@@ -124,4 +124,5 @@ enum ReviewStatus {
   PROCESSING
   COMPLETED
   FAILED
+  CANCELLED
 }

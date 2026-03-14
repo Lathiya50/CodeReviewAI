@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ReviewCardSkeleton } from "@/components/shimmer-skeleton";
 import {
+  Ban,
   GitPullRequest,
   Clock,
   CheckCircle,
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ReviewStatus = "all" | "COMPLETED" | "PROCESSING" | "PENDING" | "FAILED";
+type ReviewStatus = "all" | "COMPLETED" | "PROCESSING" | "PENDING" | "FAILED" | "CANCELLED";
 
 export default function ReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus>("all");
@@ -55,6 +56,8 @@ export default function ReviewsPage() {
       reviews.data?.filter((r) => r.status === "PROCESSING").length ?? 0,
     PENDING: reviews.data?.filter((r) => r.status === "PENDING").length ?? 0,
     FAILED: reviews.data?.filter((r) => r.status === "FAILED").length ?? 0,
+    CANCELLED:
+      reviews.data?.filter((r) => r.status === "CANCELLED").length ?? 0,
   };
 
   return (
@@ -79,7 +82,7 @@ export default function ReviewsPage() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap p-1 bg-muted/50 rounded-lg w-fit">
-        {(["all", "COMPLETED", "PROCESSING", "PENDING", "FAILED"] as const).map(
+        {(["all", "COMPLETED", "PROCESSING", "PENDING", "FAILED", "CANCELLED"] as const).map(
           (status) => (
             <button
               key={status}
@@ -195,6 +198,8 @@ function ReviewCard({ review, onRetry }: ReviewCardProps) {
         return "Analyzing code…";
       case "FAILED":
         return review.error || "Analysis failed";
+      case "CANCELLED":
+        return "Review was cancelled";
       default:
         return null;
     }
@@ -286,7 +291,7 @@ function ReviewCard({ review, onRetry }: ReviewCardProps) {
                 href={`/repos/${review.repository.id}/pr/${review.prNumber}`}
               >
                 <Button size={"sm"} variant={"outline"}>
-                  {review.status === "COMPLETED" ? "Completed" : "Pending"}
+                  {review.status === "COMPLETED" ? "Completed" : review.status === "CANCELLED" ? "Cancelled" : "Pending"}
                 </Button>
               </Link>
             )}
@@ -307,6 +312,8 @@ function getStatusBg(status: string) {
       return "bg-amber-500/10";
     case "FAILED":
       return "bg-red-500/10";
+    case "CANCELLED":
+      return "bg-muted";
     default:
       return "bg-muted";
   }
@@ -321,6 +328,7 @@ function StatusBadge({ status }: { status: string }) {
     PROCESSING: "info",
     PENDING: "warning",
     FAILED: "destructive",
+    CANCELLED: "secondary",
   };
 
   return (
@@ -362,6 +370,10 @@ function StatusIcon({
     case "FAILED":
       return (
         <XCircle className={cn("text-red-600 dark:text-red-400", className)} />
+      );
+    case "CANCELLED":
+      return (
+        <Ban className={cn("text-muted-foreground", className)} />
       );
     default:
       return (
