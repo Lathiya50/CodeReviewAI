@@ -21,9 +21,9 @@ interface PullRequestPayload {
 }
 
 function verifySignature(payload: string, signature: string | null): boolean {
-  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  const secret = process.env.GH_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn("GITHUB_WEBHOOK_SECRET not set, skipping verification");
+    console.warn("GH_WEBHOOK_SECRET not set, skipping verification");
     return true;
   }
 
