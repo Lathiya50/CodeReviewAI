@@ -18,10 +18,10 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/codereviewai" \
     BETTER_AUTH_SECRET="build-time-better-auth-secret-change-at-runtime" \
     BETTER_AUTH_URL="https://example.com" \
     NEXT_PUBLIC_APP_URL="https://example.com" \
-    GITHUB_CLIENT_ID="build-github-client-id" \
-    GITHUB_CLIENT_SECRET="build-github-client-secret" \
+    GH_CLIENT_ID="build-github-client-id" \
+    GH_CLIENT_SECRET="build-github-client-secret" \
     OPENAI_API_KEY="sk-build-placeholder" \
-    GITHUB_WEBHOOK_SECRET="build-github-webhook-secret" \
+    GH_WEBHOOK_SECRET="build-github-webhook-secret" \
     INNGEST_EVENT_KEY="build-inngest-event-key" \
     INNGEST_SIGNING_KEY="build-inngest-signing-key"
 
