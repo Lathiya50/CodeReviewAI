@@ -1,18 +1,10 @@
 "use client";
 
 import CalendarHeatmap from "react-calendar-heatmap";
-import "react-calendar-heatmap/dist/styles.css";
-import "@/components/analytics/activity-heatmap.css";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import "./activity-heatmap.css";
+import { ChartSkeleton } from "@/components/shimmer-skeleton";
 
-interface HeatmapCell {
+interface HeatmapValue {
   date: string;
   count: number;
   week: number;
@@ -20,139 +12,63 @@ interface HeatmapCell {
 }
 
 interface ActivityHeatmapProps {
-  data: HeatmapCell[];
-  isLoading?: boolean;
+  data: HeatmapValue[] | undefined;
+  isLoading: boolean;
 }
 
-/** Value shape passed by react-calendar-heatmap to classForValue / titleForValue */
-type HeatmapDayValue = { date: string; count?: number } | undefined;
-
-/** Ordered intensity steps for the legend (count → level 0–4) */
-const LEGEND_STEPS = [0, 1, 3, 5, 7] as const;
-
-/**
- * Maps a contribution count to GitHub-style level (0–4) for CSS class heatmap-0 … heatmap-4.
- * @param count - number of contributions on that day
- * @returns level 0 (empty) through 4 (most)
- */
-function getHeatmapLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+function getHeatmapLevel(count: number): number {
   if (count === 0) return 0;
-  if (count <= 1) return 1;
-  if (count <= 3) return 2;
-  if (count <= 5) return 3;
+  if (count <= 2) return 1;
+  if (count <= 5) return 2;
+  if (count <= 10) return 3;
   return 4;
 }
 
-/**
- * Formats a date string (YYYY-MM-DD) for GitHub-style tooltip: "Month Day" (e.g. "Jan 15").
- */
-function formatTooltipDate(dateStr: string): string {
-  const d = new Date(dateStr + "Z");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-/**
- * ActivityHeatmap — GitHub profile–style contribution graph (last 52 weeks).
- * Layout: weeks as columns, days as rows; tooltips and colors match GitHub.
- * @param data - array of { date, count, week, day } — 364 entries (52 weeks)
- * @param isLoading - whether data is loading
- */
-export function ActivityHeatmap({
-  data,
-  isLoading = false,
-}: ActivityHeatmapProps) {
+export function ActivityHeatmap({ data, isLoading }: ActivityHeatmapProps) {
   if (isLoading) {
     return (
-      <Card className="rounded-xl">
-        <CardHeader className="px-6 pt-6 pb-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="h-4 w-36 animate-pulse rounded-md bg-muted" />
-              <div className="h-3 w-48 animate-pulse rounded-md bg-muted" />
-            </div>
-            <div className="h-6 w-36 animate-pulse rounded-md bg-muted" />
-          </div>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <div className="h-[120px] animate-pulse rounded-lg bg-muted" />
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+        <ChartSkeleton />
+      </div>
     );
   }
 
-  const values = data.map((d) => ({ date: d.date, count: d.count }));
-  const totalReviews = data.reduce((sum, d) => sum + d.count, 0);
-  const startDate = data[0]?.date ?? new Date().toISOString().split("T")[0];
-  const endDate =
-    data[data.length - 1]?.date ?? new Date().toISOString().split("T")[0];
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setFullYear(startDate.getFullYear() - 1);
 
   return (
-    <Card className="rounded-xl">
-      <CardHeader className="px-6 pt-6 pb-2">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base font-semibold">
-              Contributions
-            </CardTitle>
-            <CardDescription className="mt-0.5 text-sm">
-              {totalReviews} contribution{totalReviews !== 1 ? "s" : ""} in the
-              last year
-            </CardDescription>
-          </div>
-          {/* Legend — GitHub style: Less [squares] More */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span>Less</span>
-            {LEGEND_STEPS.map((n) => {
-              const level = getHeatmapLevel(n);
-              return (
-                <div
-                  key={n}
-                  className={cn(
-                    "size-3 rounded-sm",
-                    level === 0 && "bg-[#ebedf0] dark:bg-[#161b22]",
-                    level === 1 && "bg-[#9be9a8] dark:bg-[#0e4429]",
-                    level === 2 && "bg-[#40c463] dark:bg-[#006d32]",
-                    level === 3 && "bg-[#30a14e] dark:bg-[#26a641]",
-                    level === 4 && "bg-[#216e39] dark:bg-[#39d353]",
-                  )}
-                />
-              );
-            })}
-            <span>More</span>
-          </div>
+    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold">Review Activity</h3>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span>Less</span>
+          {[0, 1, 2, 3, 4].map((level) => (
+            <span
+              key={level}
+              className={`heatmap-legend-${level} h-2.5 w-2.5 rounded-sm`}
+            />
+          ))}
+          <span>More</span>
         </div>
-      </CardHeader>
-      <CardContent className="px-6 pb-6 pt-3">
-        <div className="activity-heatmap activity-heatmap-container overflow-x-auto">
-          <CalendarHeatmap
-            startDate={startDate}
-            endDate={endDate}
-            values={values}
-            horizontal
-            showMonthLabels
-            showWeekdayLabels
-            gutterSize={2}
-            classForValue={(value: HeatmapDayValue) => {
-              if (!value || value.count === 0) return "heatmap-0";
-              return `heatmap-${getHeatmapLevel(value.count ?? 0)}`;
-            }}
-            titleForValue={(value: HeatmapDayValue) => {
-              if (!value) return "";
-              const count = value.count ?? 0;
-              const dateLabel = formatTooltipDate(value.date);
-              if (count === 0) {
-                return `No contributions on ${dateLabel}`;
-              }
-              return `${count} contribution${count !== 1 ? "s" : ""} on ${dateLabel}`;
-            }}
-            monthLabels={[
-              "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-            ]}
-            weekdayLabels={["", "Mon", "", "Wed", "", "Fri", ""]}
-          />
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="heatmap-container overflow-x-auto">
+        <CalendarHeatmap
+          startDate={startDate}
+          endDate={today}
+          values={data || []}
+          classForValue={(value) => {
+            if (!value || !value.count) return "heatmap-day-0";
+            return `heatmap-day-${getHeatmapLevel(value.count)}`;
+          }}
+          titleForValue={(value) => {
+            if (!value) return "No reviews";
+            return `${value.count} review${value.count !== 1 ? "s" : ""} on ${value.date}`;
+          }}
+          gutterSize={3}
+        />
+      </div>
+    </div>
   );
 }

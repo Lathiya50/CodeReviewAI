@@ -176,22 +176,40 @@ export const reviewRouter = createTRPCRouter({
         });
       }
 
-      if (review.status !== "PENDING" && review.status !== "PROCESSING") {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Only pending or processing reviews can be cancelled",
-        });
+      // Idempotent: if it's already cancelled, treat this as success.
+      if (review.status === "CANCELLED") {
+        return { success: true };
       }
 
-      await ctx.db.review.update({
-        where: { id: input.reviewId },
-        data: { status: "CANCELLED" },
-      });
+      try {
+        await ctx.db.review.update({
+          where: { id: input.reviewId },
+          data: { status: "CANCELLED" },
+        });
 
-      await inngest.send({
-        name: "review/pr.cancelled",
-        data: { reviewId: input.reviewId },
-      });
+        await inngest.send({
+          name: "review/pr.cancelled",
+          data: { reviewId: input.reviewId },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+
+        if (
+          message.includes('invalid input value for enum "ReviewStatus"') &&
+          message.includes("CANCELLED")
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Cancellation is temporarily unavailable due to a server configuration issue. Please try again shortly.",
+          });
+        }
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to cancel review. Please try again.",
+        });
+      }
 
       return { success: true };
     }),

@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CircularGauge } from "@/components/ui/circular-gauge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,579 +18,465 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  CheckCircle,
+  Loader2,
+  XCircle,
+  Ban,
   Bug,
   Shield,
   Zap,
   Paintbrush,
   Lightbulb,
-  FileCode2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  ChevronDown,
-  ChevronRight,
+  FileCode,
   Copy,
   Check,
-  CircleDot,
-  ShieldCheck,
-  ShieldAlert,
-  ShieldX,
-  Github,
-  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Send,
   MessageSquare,
-  AlertTriangle,
-  ExternalLink,
+  Sparkles,
+  Info,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc/client";
 
 interface ReviewComment {
   file: string;
   line: number;
-  severity: string;
-  category?: string;
+  severity: "critical" | "high" | "medium" | "low";
+  category: "bug" | "security" | "performance" | "style" | "suggestion";
   message: string;
   suggestion?: string;
 }
 
-interface ReviewResultProps {
-  review: {
-    id: string;
-    status: string;
-    summary: string | null;
-    riskScore: number | null;
-    comments: ReviewComment[] | unknown;
-    error: string | null;
-    createdAt: Date;
-    prUrl?: string;
-    postedToGithub?: boolean;
-    githubReviewId?: bigint | number | null;
-  };
-  repositoryId?: string;
-  prNumber?: number;
+interface Review {
+  id: string;
+  status: string;
+  riskScore: number | null;
+  summary: string | null;
+  comments: unknown;
+  createdAt: string | Date;
 }
 
-type GitHubEventType = "COMMENT" | "REQUEST_CHANGES";
+interface ReviewResultProps {
+  review: Review;
+}
 
-/**
- * Renders a complete AI review result with risk score, severity breakdown,
- * comments, and inline PR comment posting to GitHub.
- * @param review - The review data object
- * @param repositoryId - Optional repository ID for GitHub posting
- * @param prNumber - Optional PR number for GitHub posting
- */
-export function ReviewResult({
-  review,
-  repositoryId,
-  prNumber,
-}: ReviewResultProps) {
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
-    new Set(),
+function getSeverityStyles(severity: string) {
+  const styles: Record<string, { bg: string; text: string; border: string; ring: string }> = {
+    critical: { bg: "bg-red-500/10", text: "text-red-500", border: "border-red-500/20", ring: "ring-red-500/20" },
+    high: { bg: "bg-orange-500/10", text: "text-orange-500", border: "border-orange-500/20", ring: "ring-orange-500/20" },
+    medium: { bg: "bg-amber-500/10", text: "text-amber-500", border: "border-amber-500/20", ring: "ring-amber-500/20" },
+    low: { bg: "bg-blue-500/10", text: "text-blue-500", border: "border-blue-500/20", ring: "ring-blue-500/20" },
+  };
+  return styles[severity] || styles.low;
+}
+
+function getCategoryIcon(category: string) {
+  const icons: Record<string, React.ReactNode> = {
+    bug: <Bug className="h-3.5 w-3.5" />,
+    security: <Shield className="h-3.5 w-3.5" />,
+    performance: <Zap className="h-3.5 w-3.5" />,
+    style: <Paintbrush className="h-3.5 w-3.5" />,
+    suggestion: <Lightbulb className="h-3.5 w-3.5" />,
+  };
+  return icons[category] || <Info className="h-3.5 w-3.5" />;
+}
+
+function CommentCard({
+  comment,
+  index,
+  selected,
+  onToggle,
+}: {
+  comment: ReviewComment;
+  index: number;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const severity = getSeverityStyles(comment.severity);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(`${comment.file}:${comment.line}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.03 }}
+      className={`rounded-xl border bg-card/50 backdrop-blur-sm overflow-hidden transition-all ${selected ? "border-primary/40 ring-1 ring-primary/20" : "border-border/40"}`}
+    >
+      <div className="flex items-start gap-3 p-4">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={onToggle}
+          className="mt-0.5 shrink-0 border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+        />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 capitalize ${severity.bg} ${severity.text} ${severity.ring}`}>
+              {comment.severity}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground capitalize">
+              {getCategoryIcon(comment.category)}
+              {comment.category}
+            </span>
+          </div>
+
+          <p className="text-sm leading-relaxed">{comment.message}</p>
+
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-mono"
+            >
+              <FileCode className="h-3 w-3" />
+              {comment.file}:{comment.line}
+              {copied ? (
+                <Check className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+              )}
+            </button>
+          </div>
+
+          {comment.suggestion && (
+            <div className="mt-2">
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                <Lightbulb className="h-3 w-3" />
+                {expanded ? "Hide" : "View"} suggestion
+                {expanded ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </button>
+              <AnimatePresence>
+                {expanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <pre className="mt-2 rounded-lg bg-muted/40 border border-border/40 p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                      {comment.suggestion}
+                    </pre>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
-  const [eventType, setEventType] = useState<GitHubEventType>("COMMENT");
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [postSuccess, setPostSuccess] = useState<{
-    postedCount: number;
-    skippedCount: number;
-    forcedComment: boolean;
-  } | null>(null);
+}
 
-  const hasPostedBefore = review.postedToGithub || postSuccess !== null;
-  const canPostToGithub =
-    repositoryId && prNumber && review.status === "COMPLETED";
+function SeverityBar({ comments }: { comments: ReviewComment[] }) {
+  const counts = useMemo(() => {
+    const c = { critical: 0, high: 0, medium: 0, low: 0 };
+    comments.forEach((comment) => {
+      if (comment.severity in c) c[comment.severity as keyof typeof c]++;
+    });
+    return c;
+  }, [comments]);
 
-  const comments = useMemo(
-    () =>
-      Array.isArray(review.comments)
-        ? (review.comments as ReviewComment[])
-        : [],
-    [review.comments],
+  const total = comments.length;
+  if (total === 0) return null;
+
+  const items = [
+    { key: "critical", label: "Critical", count: counts.critical, color: "bg-red-500" },
+    { key: "high", label: "High", count: counts.high, color: "bg-orange-500" },
+    { key: "medium", label: "Medium", count: counts.medium, color: "bg-amber-500" },
+    { key: "low", label: "Low", count: counts.low, color: "bg-blue-500" },
+  ];
+
+  return (
+    <div>
+      <div className="flex h-2 rounded-full overflow-hidden bg-muted/40">
+        {items.map(
+          (item) =>
+            item.count > 0 && (
+              <motion.div
+                key={item.key}
+                className={`${item.color} h-full`}
+                initial={{ width: 0 }}
+                animate={{ width: `${(item.count / total) * 100}%` }}
+                transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              />
+            )
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-3 mt-2">
+        {items.map(
+          (item) =>
+            item.count > 0 && (
+              <span key={item.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className={`h-2 w-2 rounded-full ${item.color}`} />
+                {item.label}: {item.count}
+              </span>
+            )
+        )}
+      </div>
+    </div>
   );
+}
 
-  const hasInitialized = useRef(false);
+export function ReviewResult({ review }: ReviewResultProps) {
+  const [selectedComments, setSelectedComments] = useState<Set<number>>(new Set());
+  const [eventType, setEventType] = useState<"COMMENT" | "REQUEST_CHANGES">("COMMENT");
+  const [showPostDialog, setShowPostDialog] = useState(false);
 
-  React.useEffect(() => {
-    if (!hasInitialized.current && comments.length > 0 && canPostToGithub) {
-      hasInitialized.current = true;
-      setSelectedIndices(new Set(comments.map((_, i) => i)));
-    }
-  }, [comments, canPostToGithub]);
-
-  const utils = trpc.useUtils();
-
-  const postToGithub = trpc.review.postToGithub.useMutation({
+  const postMutation = trpc.review.postToGithub.useMutation({
     onSuccess: (data) => {
-      setPostSuccess({
-        postedCount: data.postedCount,
-        skippedCount: data.skippedCount,
-        forcedComment: data.forcedComment ?? false,
-      });
-      setShowConfirmDialog(false);
-      setSelectedIndices(new Set());
-      if (repositoryId && prNumber) {
-        utils.review.getLatestForPR.invalidate({ repositoryId, prNumber });
-      }
+      setSelectedComments(new Set());
+      setShowPostDialog(false);
+      toast.success(`Posted ${data.postedCount} comments to GitHub`);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 
-  /**
-   * Toggles a comment's selection state by index.
-   * @param index - Comment index in the comments array
-   */
-  const toggleComment = useCallback((index: number) => {
-    setSelectedIndices((prev) => {
+  const comments = useMemo(() => {
+    if (!Array.isArray(review.comments)) return [];
+    return review.comments as ReviewComment[];
+  }, [review.comments]);
+
+  const toggleComment = (index: number) => {
+    setSelectedComments((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
       return next;
     });
-  }, []);
+  };
 
-  /** Selects all comments. */
-  const selectAll = useCallback(() => {
-    setSelectedIndices(new Set(comments.map((_, i) => i)));
-  }, [comments]);
+  const toggleAll = () => {
+    if (selectedComments.size === comments.length) {
+      setSelectedComments(new Set());
+    } else {
+      setSelectedComments(new Set(comments.map((_, i) => i)));
+    }
+  };
 
-  /** Deselects all comments. */
-  const selectNone = useCallback(() => {
-    setSelectedIndices(new Set());
-  }, []);
-
-  /** Submits the selected comments to GitHub via the tRPC mutation. */
-  const handlePostToGithub = useCallback(() => {
-    if (!repositoryId || !prNumber) return;
-    postToGithub.mutate({
+  const handlePost = () => {
+    postMutation.mutate({
       reviewId: review.id,
-      commentIndices: Array.from(selectedIndices),
+      commentIndices: Array.from(selectedComments),
       event: eventType,
     });
-  }, [
-    repositoryId,
-    prNumber,
-    postToGithub,
-    review.id,
-    selectedIndices,
-    eventType,
-  ]);
+  };
 
-  if (review.status === "PENDING") {
+  // Status screens
+  if (review.status === "PENDING" || review.status === "PROCESSING") {
     return (
-      <Card>
-        <CardContent className="py-12 px-6">
-          <div className="flex items-center gap-4">
-            <div className="size-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-              <Clock className="size-5 text-amber-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium">Queued for review</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                This review is queued for review and will be processed soon.
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="size-1.5 rounded-full bg-amber-500 animate-pulse"
-                  style={{ animationDelay: `${i * 200}ms` }}
-                />
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (review.status === "PROCESSING") {
-    return (
-      <Card>
-        <CardContent className="py-12 px-6">
-          <div className="flex items-center gap-4">
-            <div className="relative size-10 shrink-0">
-              <svg className="size-10 -rotate-90" viewBox="0 0 40 40">
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="16"
-                  fill="none"
-                  strokeWidth="3"
-                  className="stroke-muted"
-                />
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="16"
-                  fill="none"
-                  strokeWidth="3"
-                  className="stroke-primary"
-                  style={{
-                    strokeDasharray: "100",
-                    strokeDashoffset: "60",
-                    animation: "spin 1s linear infinite",
-                    transformOrigin: "center",
-                  }}
-                />
-              </svg>
-              <style jsx>{`
-                @keyframes spin {
-                  to {
-                    transform: rotate(360deg);
-                  }
-                }
-              `}</style>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium">Analysing code</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Scanning for bugs, security issues, and improvements
-              </p>
-            </div>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              ~20s
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="mb-4"
+        >
+          <Loader2 className="h-8 w-8 text-primary" />
+        </motion.div>
+        <h3 className="text-base font-semibold">
+          {review.status === "PENDING" ? "Review queued" : "Analyzing code..."}
+        </h3>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {review.status === "PENDING"
+            ? "Your review will start shortly."
+            : "AI is reviewing your code. This usually takes a few seconds."}
+        </p>
+      </div>
     );
   }
 
   if (review.status === "FAILED") {
     return (
-      <Card className="overflow-hidden border-destructive/20">
-        <CardContent className="p-0">
-          <div className="relative py-20 px-6">
-            <div className="absolute inset-0 bg-linear-to-b from-red-500/5 via-transparent to-red-500/5" />
-
-            <div className="relative text-center">
-              <div className="mx-auto size-16 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mb-6">
-                <XCircle className="size-8 text-destructive" />
-              </div>
-              <h3 className="text-lg font-semibold text-destructive">
-                Failed to review code
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {review.error || "Please try again later or contact support"}
-              </p>
-              <Button variant={"outline"} className="mt-6">
-                Retry Analysis
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 ring-1 ring-destructive/20 mb-4">
+          <XCircle className="h-6 w-6 text-destructive" />
+        </div>
+        <h3 className="text-base font-semibold">Review failed</h3>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Something went wrong during the review. Try running it again.
+        </p>
+      </div>
     );
   }
 
   if (review.status === "CANCELLED") {
     return (
-      <Card>
-        <CardContent className="py-12 px-6">
-          <div className="flex items-center gap-4">
-            <div className="size-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <XCircle className="size-5 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium">Review cancelled</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                This review was cancelled. You can start a new one.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/80 ring-1 ring-border/50 mb-4">
+          <Ban className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-semibold">Review cancelled</h3>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          This review was cancelled before completion.
+        </p>
+      </div>
     );
   }
 
-  const severityCounts = {
-    critical: comments.filter((c) => c.severity === "critical").length,
-    high: comments.filter((c) => c.severity === "high").length,
-    medium: comments.filter((c) => c.severity === "medium").length,
-    low: comments.filter((c) => c.severity === "low").length,
-  };
-
-  const totalIssues = comments.length;
-
+  // COMPLETED
   return (
     <div className="space-y-6">
-      {/* Posted to GitHub Banner */}
-      {hasPostedBefore && (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
-          <CardContent className="py-3 px-4">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                <Github className="size-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                  Posted to GitHub
-                  {postSuccess &&
-                    ` — ${postSuccess.postedCount} comment${postSuccess.postedCount !== 1 ? "s" : ""} posted${postSuccess.skippedCount > 0 ? `, ${postSuccess.skippedCount} skipped` : ""}`}
-                </p>
-                {postSuccess?.forcedComment && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                    Posted as Comment instead of Request Changes (GitHub
-                    doesn&apos;t allow requesting changes on your own PR)
-                  </p>
-                )}
-              </div>
-              {review.githubReviewId && (
-                <a
-                  href={review.prUrl ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 h-auto py-1 px-2 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
-                  >
-                    <ExternalLink className="size-3" />
-                    View on GitHub
-                  </Button>
-                </a>
-              )}
+      {/* Risk Score + Severity Overview */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Risk Score */}
+        <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 flex items-center gap-6">
+          <CircularGauge
+            value={review.riskScore ?? 0}
+            size={100}
+            strokeWidth={7}
+            label="Risk"
+          />
+          <div>
+            <h3 className="text-sm font-semibold mb-1">Risk Score</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {(review.riskScore ?? 0) <= 30
+                ? "Low risk. This PR looks safe to merge."
+                : (review.riskScore ?? 0) <= 60
+                  ? "Medium risk. Review the flagged issues."
+                  : "High risk. Critical issues found."}
+            </p>
+          </div>
+        </div>
+
+        {/* Severity Breakdown */}
+        <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6">
+          <h3 className="text-sm font-semibold mb-3">Severity Breakdown</h3>
+          <SeverityBar comments={comments} />
+          {comments.length === 0 && (
+            <div className="flex items-center gap-2 text-sm text-emerald-500">
+              <CheckCircle className="h-4 w-4" />
+              No issues found
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
+      </div>
+
+      {/* AI Summary */}
+      {review.summary && (
+        <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">AI Summary</h3>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {review.summary}
+          </p>
+        </div>
       )}
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-6 space-y-6">
-          <RiskScoreSection score={review.riskScore ?? 0} />
-
-          <div className="h-px bg-border/60" />
-
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Severity Breakdown
-              </h3>
-              <div
-                className={cn(
-                  "flex items-center justify-center min-w-[2.5rem] px-3 py-1.5 rounded-lg",
-                  totalIssues === 0 ? "bg-emerald-500/10" : "bg-muted",
-                )}
-              >
-                <span
-                  className={cn(
-                    "text-xl font-bold tabular-nums tracking-tight",
-                    totalIssues === 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-foreground",
-                  )}
-                >
-                  {totalIssues}
-                </span>
-              </div>
-            </div>
-
-            <SeverityDistributionBar
-              counts={severityCounts}
-              total={totalIssues}
-            />
-
-            <div className="flex items-center gap-4 mt-4 flex-wrap">
-              <SeverityLegendItem
-                label="Critical"
-                count={severityCounts.critical}
-                color="bg-red-500"
-              />
-              <SeverityLegendItem
-                label="High"
-                count={severityCounts.high}
-                color="bg-orange-500"
-              />
-              <SeverityLegendItem
-                label="Medium"
-                count={severityCounts.medium}
-                color="bg-amber-500"
-              />
-              <SeverityLegendItem
-                label="Low"
-                count={severityCounts.low}
-                color="bg-slate-400 dark:bg-slate-500"
-              />
-            </div>
-          </div>
-
-          {review.summary && (
-            <>
-              <div className="h-px bg-border/60" />
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  AI Summary
-                </h3>
-                <p className="text-sm leading-relaxed text-foreground/90">
-                  {review.summary}
-                </p>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {comments.length > 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              Review Comments
-            </h2>
-            <div className="flex items-center gap-3">
-              {canPostToGithub && (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={selectAll}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Select all
-                  </button>
-                  <span className="text-xs text-muted-foreground">/</span>
-                  <button
-                    onClick={selectNone}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    None
-                  </button>
-                </div>
-              )}
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {comments.length} {comments.length === 1 ? "issue" : "issues"}
-              </span>
-            </div>
+      {/* Comments */}
+      {comments.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Comments ({comments.length})
+            </h3>
+            <button
+              onClick={toggleAll}
+              className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              {selectedComments.size === comments.length ? "Deselect all" : "Select all"}
+            </button>
           </div>
 
           <div className="space-y-2">
-            {comments.map((comment, index) => (
+            {comments.map((comment, i) => (
               <CommentCard
-                key={index}
+                key={i}
                 comment={comment}
-                index={index}
-                selectable={!!canPostToGithub}
-                selected={selectedIndices.has(index)}
-                onToggleSelect={toggleComment}
+                index={i}
+                selected={selectedComments.has(i)}
+                onToggle={() => toggleComment(i)}
               />
             ))}
           </div>
         </div>
-      ) : (
-        review.status === "COMPLETED" && <NoIssuesCard />
       )}
 
-      {/* Floating Action Bar for posting to GitHub */}
-      {canPostToGithub && comments.length > 0 && (
-        <div className="sticky bottom-4 z-10">
-          <Card className="border-primary/20 shadow-lg bg-background/95 backdrop-blur-sm">
-            <CardContent className="py-3 px-4">
-              <div className="flex items-center gap-4">
-                <div className="p-1.5 rounded-lg bg-primary/10">
-                  <Github className="size-4 text-primary" />
-                </div>
+      {/* Post to GitHub floating bar */}
+      <AnimatePresence>
+        {selectedComments.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/95 backdrop-blur-xl shadow-2xl px-4 py-3">
+              <span className="text-sm font-medium">
+                {selectedComments.size} selected
+              </span>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {selectedIndices.size} of {comments.length} comment
-                    {comments.length !== 1 ? "s" : ""} selected
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center rounded-lg border bg-muted/50 p-0.5">
-                    <button
-                      onClick={() => setEventType("COMMENT")}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                        eventType === "COMMENT"
-                          ? "bg-background shadow-sm text-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <MessageSquare className="size-3" />
-                      Comment
-                    </button>
-                    <button
-                      onClick={() => setEventType("REQUEST_CHANGES")}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                        eventType === "REQUEST_CHANGES"
-                          ? "bg-background shadow-sm text-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <AlertTriangle className="size-3" />
-                      Request Changes
-                    </button>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    disabled={selectedIndices.size === 0 || postToGithub.isPending}
-                    onClick={() => setShowConfirmDialog(true)}
-                    className="gap-1.5"
-                  >
-                    {postToGithub.isPending ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Github className="size-3.5" />
-                    )}
-                    Post to GitHub
-                  </Button>
-                </div>
+              <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5">
+                <button
+                  onClick={() => setEventType("COMMENT")}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${eventType === "COMMENT" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Comment
+                </button>
+                <button
+                  onClick={() => setEventType("REQUEST_CHANGES")}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${eventType === "REQUEST_CHANGES" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Request Changes
+                </button>
               </div>
 
-              {postToGithub.error && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-destructive">
-                  <XCircle className="size-3.5 shrink-0" />
-                  {postToGithub.error.message}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setShowPostDialog(true)}
+                disabled={postMutation.isPending}
+              >
+                {postMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                Post to GitHub
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Confirmation Dialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      {/* Post confirmation dialog */}
+      <AlertDialog open={showPostDialog} onOpenChange={setShowPostDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Post comments to GitHub?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will post{" "}
-              <span className="font-semibold text-foreground">
-                {selectedIndices.size} comment
-                {selectedIndices.size !== 1 ? "s" : ""}
-              </span>{" "}
-              as a{" "}
-              <span className="font-semibold text-foreground">
-                {eventType === "COMMENT"
-                  ? "comment (neutral)"
-                  : "request changes (blocking)"}
-              </span>{" "}
-              review on the pull request. Each post creates a new review on
-              GitHub.
+              This will post {selectedComments.size} comment{selectedComments.size !== 1 ? "s" : ""} as{" "}
+              {eventType === "COMMENT" ? "a comment" : "a change request"} on the pull request.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={postToGithub.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handlePostToGithub}
-              disabled={postToGithub.isPending}
+              onClick={handlePost}
+              disabled={postMutation.isPending}
             >
-              {postToGithub.isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin mr-1.5" />
-                  Posting...
-                </>
+              {postMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Github className="size-4 mr-1.5" />
-                  Post to GitHub
-                </>
+                "Post Comments"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -596,382 +484,4 @@ export function ReviewResult({
       </AlertDialog>
     </div>
   );
-}
-
-function NoIssuesCard() {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="relative py-16 px-6">
-          <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-emerald-500/5" />
-
-          <div className="relative text-center">
-            <div className="mx-auto size-16 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
-              <CheckCircle2 className="size-8 text-emerald-500" />
-            </div>
-            <h3>Looking Good!</h3>
-            <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
-              No issues were found. Your code follows best practices and appears
-              to be well-written.
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function CommentCard({
-  comment,
-  index,
-  selectable,
-  selected,
-  onToggleSelect,
-}: {
-  comment: ReviewComment;
-  index: number;
-  selectable: boolean;
-  selected: boolean;
-  onToggleSelect: (index: number) => void;
-}) {
-  const [expanded, setExpanded] = useState(index < 3);
-  const [copied, setCopied] = useState(false);
-  const CategoryIcon = getCategoryIcon(comment.category);
-  const severityConfig = getSeverityStyles(comment.severity);
-
-  const copyLocation = () => {
-    navigator.clipboard.writeText(`${comment.file}:${comment.line}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const pathParts = comment.file.split("/");
-  const fileName = pathParts.pop();
-  const directory = pathParts.join("/");
-
-  return (
-    <Card
-      className={cn(
-        "transition-colors",
-        selectable && selected && "ring-1 ring-primary/30 bg-primary/[0.02]",
-      )}
-    >
-      <div className="flex items-start">
-        {selectable && (
-          <div className="pt-5 pl-4 pr-1 shrink-0">
-            <Checkbox
-              checked={selected}
-              onCheckedChange={() => onToggleSelect(index)}
-            />
-          </div>
-        )}
-
-        <div className="flex-1 min-w-0">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="w-full text-left"
-          >
-            <div className="p-4 flex items-start gap-3">
-              <div
-                className={cn(
-                  "my-0.5 w-1 h-12 rounded-full shrink-0",
-                  severityConfig.bar,
-                )}
-              />
-
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    variant={"outline"}
-                    className={cn(
-                      "text-[10px] uppercase tracking-wider font-semibold",
-                      severityConfig.badge,
-                    )}
-                  >
-                    {comment.severity}
-                  </Badge>
-
-                  {comment.category && (
-                    <Badge variant={"secondary"} className="gap-1 text-xs">
-                      {React.createElement(CategoryIcon, {
-                        className: "size-3",
-                      })}
-                      {comment.category}
-                    </Badge>
-                  )}
-
-                  <div className="flex-1" />
-
-                  {expanded ? (
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  )}
-                </div>
-
-                <p
-                  className={cn(
-                    "text-sm leading-relaxed",
-                    !expanded && "line-clamp-2",
-                  )}
-                >
-                  {comment.message}
-                </p>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    copyLocation();
-                  }}
-                  className="group/file inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <FileCode2 className="size-3.5" />
-                  {directory && (
-                    <span className="opacity-60">{directory}</span>
-                  )}
-                  <span className="font-medium text-foreground ">
-                    {fileName}
-                  </span>
-                  <span className="text-foreground">:</span>
-                  <span className="text-primary font-medium">
-                    {comment.line}
-                  </span>
-                  {copied ? (
-                    <Check className="size-3.5 text-emerald-500" />
-                  ) : (
-                    <Copy className="size-3.5 opacity-0 group-hover/file:opacity-100 transition-opacity" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </button>
-
-          {expanded && comment.suggestion && (
-            <div className="px-4 pb-4">
-              <div className="ml-4 rounded-lg bg-linear-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1 rounded-md bg-emerald-500/20">
-                    <Lightbulb className="size-3.5 text-emerald-500" />
-                  </div>
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                    Suggested Fix
-                  </span>
-                </div>
-                <p className="text-sm leading-relaxed pl-7">
-                  {comment.suggestion}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function SeverityDistributionBar({
-  counts,
-  total,
-}: {
-  counts: { critical: number; high: number; medium: number; low: number };
-  total: number;
-}) {
-  if (total === 0) {
-    return (
-      <div className="h-2 bg-emerald-500/20 rounded-full overflow-hidden">
-        <div className="w-full h-full bg-emerald-500 rounded-full" />
-      </div>
-    );
-  }
-
-  const getWidth = (count: number) => `${(count / total) * 100}%`;
-
-  return (
-    <div className="h-2 bg-muted rounded-full overflow-hidden flex">
-      {counts.critical > 0 && (
-        <div
-          className="h-full bg-red-500 first:rounded-l-full last:rounded-r-full"
-          style={{ width: getWidth(counts.critical) }}
-        />
-      )}
-      {counts.high > 0 && (
-        <div
-          className="h-full bg-orange-500 first:rounded-l-full last:rounded-r-full"
-          style={{ width: getWidth(counts.high) }}
-        />
-      )}
-      {counts.medium > 0 && (
-        <div
-          className="h-full bg-amber-500 first:rounded-l-full last:rounded-r-full"
-          style={{ width: getWidth(counts.medium) }}
-        />
-      )}
-      {counts.low > 0 && (
-        <div
-          className="h-full bg-slate-400 dark:bg-slate-500 first:rounded-l-full last:rounded-r-full"
-          style={{ width: getWidth(counts.low) }}
-        />
-      )}
-    </div>
-  );
-}
-
-function SeverityLegendItem({
-  label,
-  count,
-  color,
-}: {
-  label: string;
-  count: number;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className={cn("size-2 rounded-full", color)} />
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium tabular-nums">{count}</span>
-    </div>
-  );
-}
-
-function RiskScoreSection({ score }: { score: number }) {
-  const config = getRiskConfig(score);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Risk Score
-        </h3>
-        <div
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg",
-            config.bg,
-          )}
-        >
-          <span
-            className={cn(
-              "text-xl font-bold tabular-nums tracking-tight",
-              config.color,
-            )}
-          >
-            {score}
-          </span>
-          <span className="text-xs text-muted-foreground font-medium">
-            /100
-          </span>
-        </div>
-      </div>
-
-      <div className="relative h-1.5">
-        <div className="absolute inset-0 rounded-full bg-linear-to-r from-emerald-500 via-amber-500 to-red-500 opacity-15" />
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-emerald-500 via-amber-500 to-red-500"
-          style={{
-            width: `${score}%`,
-            transition: "width 0.3s ease-in-out",
-          }}
-        />
-        <div
-          className="absolute top-1/2 size-3.5 rounded-full bg-background border-2 shadow-md"
-          style={{
-            left: `${Math.min(Math.max(score, 2), 98)}%`,
-            transform: "translateX(-50%) translateY(-50%)",
-            borderColor: config.markerColor,
-            transition: "left 0.3s ease-in-out",
-          }}
-        />
-      </div>
-
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">Low</span>
-        <span className="text-[11px] text-muted-foreground">Critical</span>
-      </div>
-    </div>
-  );
-}
-
-function getRiskConfig(score: number) {
-  if (score < 25) {
-    return {
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-      markerColor: "#10b981",
-      label: "Low Risk",
-      icon: ShieldCheck,
-    };
-  }
-  if (score < 50) {
-    return {
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-500/10",
-      border: "border-amber-500/20",
-      markerColor: "#f59e0b",
-      label: "Medium Risk",
-      icon: CircleDot,
-    };
-  }
-  if (score < 75) {
-    return {
-      color: "text-orange-600 dark:text-orange-400",
-      bg: "bg-orange-500/10",
-      border: "border-orange-500/20",
-      markerColor: "#f97316",
-      label: "High Risk",
-      icon: ShieldAlert,
-    };
-  }
-  return {
-    color: "text-red-600 dark:text-red-400",
-    bg: "bg-red-500/10",
-    border: "border-red-500/20",
-    markerColor: "#ef4444",
-    label: "Critical Risk",
-    icon: ShieldX,
-  };
-}
-
-function getSeverityStyles(severity: string) {
-  switch (severity) {
-    case "critical":
-      return {
-        bar: "bg-red-500",
-        badge: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
-      };
-    case "high":
-      return {
-        bar: "bg-orange-500",
-        badge:
-          "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
-      };
-    case "medium":
-      return {
-        bar: "bg-amber-500",
-        badge:
-          "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-      };
-    default:
-      return {
-        bar: "bg-slate-400 dark:bg-slate-500",
-        badge: "border-border bg-muted text-muted-foreground",
-      };
-  }
-}
-
-function getCategoryIcon(category?: string) {
-  switch (category) {
-    case "bug":
-      return Bug;
-    case "security":
-      return Shield;
-    case "performance":
-      return Zap;
-    case "style":
-      return Paintbrush;
-    case "suggestion":
-      return Lightbulb;
-    default:
-      return CircleDot;
-  }
 }
