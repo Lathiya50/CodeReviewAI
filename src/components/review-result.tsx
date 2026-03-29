@@ -36,7 +36,11 @@ import {
   MessageSquare,
   Sparkles,
   Info,
+  Code2,
+  Filter,
 } from "lucide-react";
+import { SuggestionDiffViewer } from "@/components/suggestion-diff-viewer";
+import type { CodeSuggestion } from "@/lib/review-comparison";
 
 interface ReviewComment {
   file: string;
@@ -45,6 +49,13 @@ interface ReviewComment {
   category: "bug" | "security" | "performance" | "style" | "suggestion";
   message: string;
   suggestion?: string;
+  // Enhanced code comparison fields
+  oldCode?: string;
+  newCode?: string;
+  lineStart?: number;
+  lineEnd?: number;
+  context?: string;
+  codeSuggestion?: CodeSuggestion;
 }
 
 interface Review {
@@ -92,7 +103,10 @@ function CommentCard({
   selected: boolean;
   onToggle: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const hasCodeComparison = comment.oldCode && comment.newCode;
+  const hasSuggestion = comment.suggestion || comment.codeSuggestion || hasCodeComparison;
+  // Auto-expand if there's a code comparison available
+  const [expanded, setExpanded] = useState(hasCodeComparison || false);
   const [copied, setCopied] = useState(false);
   const severity = getSeverityStyles(comment.severity);
 
@@ -126,6 +140,12 @@ function CommentCard({
               {getCategoryIcon(comment.category)}
               {comment.category}
             </span>
+            {hasCodeComparison && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                <Code2 className="h-2.5 w-2.5" />
+                Code diff
+              </span>
+            )}
           </div>
 
           <p className="text-sm leading-relaxed">{comment.message}</p>
@@ -145,14 +165,19 @@ function CommentCard({
             </button>
           </div>
 
-          {comment.suggestion && (
-            <div className="mt-2">
+          {hasSuggestion && (
+            <div className="mt-3 pt-3 border-t border-border/20">
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                className="flex items-center gap-2 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
               >
-                <Lightbulb className="h-3 w-3" />
+                <Code2 className="h-3.5 w-3.5" />
                 {expanded ? "Hide" : "View"} suggestion
+                {hasCodeComparison && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary ml-1">
+                    with comparison
+                  </span>
+                )}
                 {expanded ? (
                   <ChevronUp className="h-3 w-3" />
                 ) : (
@@ -166,11 +191,23 @@ function CommentCard({
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
+                    className="overflow-hidden mt-3"
                   >
-                    <pre className="mt-2 rounded-lg bg-muted/40 border border-border/40 p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-                      {comment.suggestion}
-                    </pre>
+                    {comment.codeSuggestion || hasCodeComparison ? (
+                      <SuggestionDiffViewer
+                        suggestion={comment.codeSuggestion || comment.suggestion || ""}
+                        fileName={comment.file}
+                        severity={comment.severity}
+                        oldCode={comment.oldCode}
+                        newCode={comment.newCode}
+                        lineStart={comment.lineStart || comment.line}
+                        context={comment.context}
+                      />
+                    ) : (
+                      <pre className="rounded-lg bg-muted/40 border border-border/40 p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                        {comment.suggestion}
+                      </pre>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -236,6 +273,7 @@ export function ReviewResult({ review }: ReviewResultProps) {
   const [selectedComments, setSelectedComments] = useState<Set<number>>(new Set());
   const [eventType, setEventType] = useState<"COMMENT" | "REQUEST_CHANGES">("COMMENT");
   const [showPostDialog, setShowPostDialog] = useState(false);
+  const [severityFilter, setSeverityFilter] = useState<Set<string>>(new Set(["critical", "high", "medium", "low"]));
 
   const postMutation = trpc.review.postToGithub.useMutation({
     onSuccess: (data) => {
@@ -253,6 +291,22 @@ export function ReviewResult({ review }: ReviewResultProps) {
     return review.comments as ReviewComment[];
   }, [review.comments]);
 
+  const filteredComments = useMemo(() => {
+    return comments.filter((c) => severityFilter.has(c.severity));
+  }, [comments, severityFilter]);
+
+  const toggleSeverityFilter = (severity: string) => {
+    setSeverityFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(severity)) {
+        if (next.size > 1) next.delete(severity);
+      } else {
+        next.add(severity);
+      }
+      return next;
+    });
+  };
+
   const toggleComment = (index: number) => {
     setSelectedComments((prev) => {
       const next = new Set(prev);
@@ -263,10 +317,21 @@ export function ReviewResult({ review }: ReviewResultProps) {
   };
 
   const toggleAll = () => {
-    if (selectedComments.size === comments.length) {
-      setSelectedComments(new Set());
+    const filteredIndices = filteredComments.map((_, i) => comments.indexOf(filteredComments[i]));
+    const allSelected = filteredIndices.every((i) => selectedComments.has(i));
+    
+    if (allSelected) {
+      setSelectedComments((prev) => {
+        const next = new Set(prev);
+        filteredIndices.forEach((i) => next.delete(i));
+        return next;
+      });
     } else {
-      setSelectedComments(new Set(comments.map((_, i) => i)));
+      setSelectedComments((prev) => {
+        const next = new Set(prev);
+        filteredIndices.forEach((i) => next.add(i));
+        return next;
+      });
     }
   };
 
@@ -383,30 +448,81 @@ export function ReviewResult({ review }: ReviewResultProps) {
       {/* Comments */}
       {comments.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Comments ({comments.length})
+              Comments ({filteredComments.length}
+              {filteredComments.length !== comments.length && ` of ${comments.length}`})
             </h3>
-            <button
-              onClick={toggleAll}
-              className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
-            >
-              {selectedComments.size === comments.length ? "Deselect all" : "Select all"}
-            </button>
+
+            <div className="flex items-center gap-3">
+              {/* Severity filter */}
+              <div className="flex items-center gap-1">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                {(["critical", "high", "medium", "low"] as const).map((sev) => {
+                  const colors = {
+                    critical: "bg-red-500",
+                    high: "bg-orange-500",
+                    medium: "bg-amber-500",
+                    low: "bg-blue-500",
+                  };
+                  const count = comments.filter((c) => c.severity === sev).length;
+                  if (count === 0) return null;
+                  return (
+                    <button
+                      key={sev}
+                      onClick={() => toggleSeverityFilter(sev)}
+                      className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all ${
+                        severityFilter.has(sev)
+                          ? "bg-muted/80 text-foreground"
+                          : "text-muted-foreground/60 hover:text-muted-foreground"
+                      }`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${colors[sev]} ${!severityFilter.has(sev) && "opacity-40"}`} />
+                      <span className="capitalize">{sev}</span>
+                      <span className="text-[10px] text-muted-foreground">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={toggleAll}
+                className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                {filteredComments.every((_, i) => selectedComments.has(comments.indexOf(filteredComments[i])))
+                  ? "Deselect all"
+                  : "Select all"}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">
-            {comments.map((comment, i) => (
-              <CommentCard
-                key={i}
-                comment={comment}
-                index={i}
-                selected={selectedComments.has(i)}
-                onToggle={() => toggleComment(i)}
-              />
-            ))}
+            {filteredComments.map((comment) => {
+              const originalIndex = comments.indexOf(comment);
+              return (
+                <CommentCard
+                  key={originalIndex}
+                  comment={comment}
+                  index={originalIndex}
+                  selected={selectedComments.has(originalIndex)}
+                  onToggle={() => toggleComment(originalIndex)}
+                />
+              );
+            })}
           </div>
+
+          {filteredComments.length === 0 && comments.length > 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              No comments match the current filter. 
+              <button
+                onClick={() => setSeverityFilter(new Set(["critical", "high", "medium", "low"]))}
+                className="text-primary hover:text-primary/80 ml-1"
+              >
+                Show all
+              </button>
+            </div>
+          )}
         </div>
       )}
 

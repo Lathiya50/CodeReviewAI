@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000",
-    "build": "prisma generate && next build",
+    "build": "next build",
+    "build:full": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "db:push": "prisma db push",

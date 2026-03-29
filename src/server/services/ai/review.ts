@@ -21,6 +21,7 @@ Your review should:
 2. Provide a brief summary of the changes
 3. Assign a risk score (0-100) based on the complexity and potential issues
 4. Give specific, actionable feedback with line numbers
+5. For each issue, extract the problematic code snippet and provide the fixed version
 
 Severity guide:
 - critical: Security vulnerabilities, data loss, crashes
@@ -37,14 +38,25 @@ IMPORTANT: You MUST respond with valid JSON matching this exact schema:
   "comments": [
     {
       "file": "string - file path",
-      "line": "number - line number",
+      "line": "number - line number where the issue starts",
       "severity": "critical | high | medium | low",
       "category": "bug | security | performance | style | suggestion",
       "message": "string - what the issue is",
-      "suggestion": "string (optional) - how to fix it"
+      "suggestion": "string (optional) - brief text description of how to fix it",
+      "oldCode": "string (optional) - the problematic code snippet (1-10 lines max)",
+      "newCode": "string (optional) - the suggested fixed code snippet",
+      "lineStart": "number (optional) - starting line number of the code snippet",
+      "lineEnd": "number (optional) - ending line number of the code snippet",
+      "context": "string (optional) - additional context or explanation for the fix"
     }
   ]
 }
+
+Code extraction rules:
+- oldCode: Extract the exact problematic lines from the diff (include 1-10 lines of context)
+- newCode: Provide the corrected version of oldCode with your suggested fix applied
+- lineStart/lineEnd: Reference the line numbers from the original file
+- Only include oldCode/newCode when you have a concrete code fix to suggest
 
 Respond ONLY with the JSON object, no markdown fences or extra text.`;
 

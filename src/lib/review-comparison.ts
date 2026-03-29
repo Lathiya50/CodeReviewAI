@@ -3,6 +3,36 @@
  * Used by the compare page and any future consumers (e.g. analytics).
  */
 
+// ─── Code Comparison Types ───────────────────────────────────────────────────
+
+/** Represents a code block with optional language and line information */
+export interface CodeBlock {
+  code: string;
+  language?: string;
+  lineStart?: number;
+  lineEnd?: number;
+}
+
+/** Inline comment within a code block */
+export interface CodeComment {
+  lineNumber: number;
+  type: "note" | "highlight" | "warning";
+  content: string;
+  position: "old" | "new" | "both";
+}
+
+/** Structured code suggestion with old/new comparison */
+export interface CodeSuggestion {
+  type: "inline" | "block" | "refactor";
+  oldCode: CodeBlock;
+  newCode: CodeBlock;
+  hint: string;
+  explanation?: string;
+  codeComments?: CodeComment[];
+}
+
+// ─── Review Comment Types ────────────────────────────────────────────────────
+
 /** Comment shape as stored in DB / returned by API (category may be missing in legacy data). */
 export interface ReviewCommentInput {
   file: string;
@@ -11,6 +41,14 @@ export interface ReviewCommentInput {
   category?: string;
   message: string;
   suggestion?: string;
+  // Enhanced code comparison fields
+  oldCode?: string;
+  newCode?: string;
+  lineStart?: number;
+  lineEnd?: number;
+  context?: string;
+  // Structured suggestion (alternative to string suggestion)
+  codeSuggestion?: CodeSuggestion;
 }
 
 /** Normalized key for matching the same issue across reviews (file + line + severity + category). */

@@ -70,6 +70,37 @@ function normalizeCategory(value: unknown): ReviewCategory {
   return map[normalized] ?? "suggestion";
 }
 
+// ─── Code Comparison Types ───────────────────────────────────────────────────
+
+export const CodeBlockSchema = z.object({
+  code: z.string(),
+  language: z.string().optional(),
+  lineStart: z.number().optional(),
+  lineEnd: z.number().optional(),
+});
+
+export const CodeCommentSchema = z.object({
+  lineNumber: z.number(),
+  type: z.enum(["note", "highlight", "warning"]),
+  content: z.string(),
+  position: z.enum(["old", "new", "both"]),
+});
+
+export const CodeSuggestionSchema = z.object({
+  type: z.enum(["inline", "block", "refactor"]),
+  oldCode: CodeBlockSchema,
+  newCode: CodeBlockSchema,
+  hint: z.string(),
+  explanation: z.string().optional(),
+  codeComments: z.array(CodeCommentSchema).optional(),
+});
+
+export type CodeBlock = z.infer<typeof CodeBlockSchema>;
+export type CodeComment = z.infer<typeof CodeCommentSchema>;
+export type CodeSuggestion = z.infer<typeof CodeSuggestionSchema>;
+
+// ─── Review Comment Schema ───────────────────────────────────────────────────
+
 export const ReviewCommentSchema = z.object({
   file: z.string(),
   line: z.number(),
@@ -83,6 +114,14 @@ export const ReviewCommentSchema = z.object({
   ),
   message: z.string(),
   suggestion: z.string().optional(),
+  // Enhanced code comparison fields
+  oldCode: z.string().optional(),
+  newCode: z.string().optional(),
+  lineStart: z.number().optional(),
+  lineEnd: z.number().optional(),
+  context: z.string().optional(),
+  // Structured suggestion (alternative to string suggestion)
+  codeSuggestion: CodeSuggestionSchema.optional(),
 });
 
 export const ReviewResultSchema = z.object({
