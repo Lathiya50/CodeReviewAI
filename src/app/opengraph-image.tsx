@@ -16,22 +16,35 @@ export default function OGImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#09090b",
+          backgroundColor: "#0a0a1a",
           fontFamily: "sans-serif",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        {/* Gradient orb */}
+        {/* Background gradient orbs */}
         <div
           style={{
             position: "absolute",
-            top: -100,
-            left: "50%",
-            width: 600,
-            height: 600,
+            top: -200,
+            left: "30%",
+            width: 700,
+            height: 700,
             borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
-            transform: "translateX(-50%)",
+              "radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: -200,
+            right: "20%",
+            width: 500,
+            height: 500,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)",
           }}
         />
 
@@ -40,10 +53,11 @@ export default function OGImage() {
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 24,
+            gap: 28,
+            position: "relative",
           }}
         >
-          {/* Logo & Title */}
+          {/* Logo */}
           <div
             style={{
               display: "flex",
@@ -53,52 +67,70 @@ export default function OGImage() {
           >
             <div
               style={{
-                width: 56,
-                height: 56,
-                borderRadius: 14,
-                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                width: 64,
+                height: 64,
+                borderRadius: 16,
+                background: "linear-gradient(135deg, #7c3aed, #6366f1, #06b6d4)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "white",
-                fontSize: 28,
-                fontWeight: 700,
               }}
             >
-              CR
+              <svg
+                width="36"
+                height="36"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
             </div>
             <span
               style={{
-                fontSize: 48,
+                fontSize: 52,
                 fontWeight: 700,
                 color: "white",
-                letterSpacing: "-0.025em",
+                letterSpacing: "-0.03em",
               }}
             >
-              CodeReviewAI
+              CodeReview
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #a78bfa, #06b6d4)",
+                  backgroundClip: "text",
+                  color: "transparent",
+                }}
+              >
+                AI
+              </span>
             </span>
           </div>
 
           {/* Tagline */}
           <p
             style={{
-              fontSize: 24,
+              fontSize: 26,
               color: "#a1a1aa",
               textAlign: "center",
-              maxWidth: 600,
+              maxWidth: 650,
               lineHeight: 1.5,
             }}
           >
             AI-powered code reviews that catch bugs, security issues, and
-            maintainability problems.
+            maintainability problems before they reach production.
           </p>
 
-          {/* Features row */}
+          {/* Feature pills */}
           <div
             style={{
               display: "flex",
-              gap: 32,
-              marginTop: 16,
+              gap: 16,
+              marginTop: 8,
             }}
           >
             {["Instant Feedback", "Security Scanning", "GitHub Integration"].map(
@@ -109,8 +141,13 @@ export default function OGImage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    color: "#71717a",
-                    fontSize: 16,
+                    backgroundColor: "rgba(124,58,237,0.1)",
+                    border: "1px solid rgba(124,58,237,0.2)",
+                    borderRadius: 999,
+                    padding: "8px 18px",
+                    color: "#c4b5fd",
+                    fontSize: 15,
+                    fontWeight: 500,
                   }}
                 >
                   <div
@@ -128,7 +165,7 @@ export default function OGImage() {
           </div>
         </div>
 
-        {/* Bottom bar */}
+        {/* Bottom tagline */}
         <div
           style={{
             position: "absolute",
@@ -138,6 +175,8 @@ export default function OGImage() {
             gap: 8,
             color: "#52525b",
             fontSize: 16,
+            fontWeight: 500,
+            letterSpacing: "0.05em",
           }}
         >
           Ship better code, faster

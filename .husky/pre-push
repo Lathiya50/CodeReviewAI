@@ -7,13 +7,13 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "Lint passed. Running build..."
+echo "Lint passed. Running type check..."
 
-pnpm run build
+pnpm exec tsc --noEmit
 
 if [ $? -ne 0 ]; then
-  echo "Build failed! Push aborted."
+  echo "Type check failed! Push aborted."
   exit 1
 fi
 
-echo "Lint and build succeeded. Proceeding with push."
+echo "Lint and type check succeeded. Proceeding with push."

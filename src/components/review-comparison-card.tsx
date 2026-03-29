@@ -1,169 +1,173 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileCode2,
-  CheckCircle2,
-  AlertCircle,
-  MinusCircle,
-  CircleDot,
+  CheckCircle,
+  AlertTriangle,
+  Minus,
   Bug,
   Shield,
   Zap,
   Paintbrush,
   Lightbulb,
+  FileCode,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Code2,
+  Copy,
+  Check,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { ReviewCommentInput } from "@/lib/review-comparison";
+import { SuggestionDiffViewer } from "@/components/suggestion-diff-viewer";
 
-const SEVERITY_STYLES: Record<
-  string,
-  { bar: string; badge: string }
-> = {
-  critical: {
-    bar: "bg-red-500",
-    badge:
-      "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
-  },
-  high: {
-    bar: "bg-orange-500",
-    badge:
-      "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  },
-  medium: {
-    bar: "bg-amber-500",
-    badge:
-      "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  },
-  low: {
-    bar: "bg-slate-400 dark:bg-slate-500",
-    badge: "border-border bg-muted text-muted-foreground",
-  },
-};
-
-function getSeverityStyle(severity: string) {
-  return SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.low;
+function getSeverityStyles(severity: string) {
+  const styles: Record<string, string> = {
+    critical: "bg-red-500/10 text-red-500 ring-red-500/20",
+    high: "bg-orange-500/10 text-orange-500 ring-orange-500/20",
+    medium: "bg-amber-500/10 text-amber-500 ring-amber-500/20",
+    low: "bg-blue-500/10 text-blue-500 ring-blue-500/20",
+  };
+  return styles[severity] || styles.low;
 }
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  bug: Bug,
-  security: Shield,
-  performance: Zap,
-  style: Paintbrush,
-  suggestion: Lightbulb,
-};
-
-export interface ComparisonCommentCardProps {
-  comment: ReviewCommentInput;
-  variant: "fixed" | "new" | "unchanged";
+function getCategoryIcon(category: string) {
+  const icons: Record<string, React.ReactNode> = {
+    bug: <Bug className="h-3 w-3" />,
+    security: <Shield className="h-3 w-3" />,
+    performance: <Zap className="h-3 w-3" />,
+    style: <Paintbrush className="h-3 w-3" />,
+    suggestion: <Lightbulb className="h-3 w-3" />,
+  };
+  return icons[category] || <Info className="h-3 w-3" />;
 }
 
-/**
- * Renders a single review comment in the comparison view with variant styling.
- */
+function getVariantConfig(variant: "fixed" | "new" | "unchanged") {
+  const configs = {
+    fixed: {
+      icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />,
+      label: "Fixed",
+      border: "border-emerald-500/20",
+      bg: "bg-emerald-500/5",
+      badge: "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20",
+    },
+    new: {
+      icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />,
+      label: "New Issue",
+      border: "border-amber-500/20",
+      bg: "bg-amber-500/5",
+      badge: "bg-amber-500/10 text-amber-500 ring-amber-500/20",
+    },
+    unchanged: {
+      icon: <Minus className="h-3.5 w-3.5 text-muted-foreground" />,
+      label: "Unchanged",
+      border: "border-border/40",
+      bg: "bg-card/50",
+      badge: "bg-muted text-muted-foreground ring-border/50",
+    },
+  };
+  return configs[variant];
+}
+
 export function ComparisonCommentCard({
   comment,
   variant,
-}: ComparisonCommentCardProps) {
-  const severityStyle = getSeverityStyle(comment.severity);
-  const CategoryIcon = comment.category ? CATEGORY_ICONS[comment.category] ?? CircleDot : CircleDot;
+}: {
+  comment: ReviewCommentInput;
+  variant: "fixed" | "new" | "unchanged";
+}) {
+  const [copied, setCopied] = useState(false);
+  const config = getVariantConfig(variant);
 
-  const variantConfig = {
-    fixed: {
-      icon: CheckCircle2,
-      label: "Fixed",
-      borderClass: "border-emerald-500/20 dark:border-emerald-500/30",
-      bgClass: "bg-emerald-500/5 dark:bg-emerald-500/10",
-      iconClass: "text-emerald-600 dark:text-emerald-400",
-    },
-    new: {
-      icon: AlertCircle,
-      label: "New",
-      borderClass: "border-amber-500/20 dark:border-amber-500/30",
-      bgClass: "bg-amber-500/5 dark:bg-amber-500/10",
-      iconClass: "text-amber-600 dark:text-amber-400",
-    },
-    unchanged: {
-      icon: MinusCircle,
-      label: "Unchanged",
-      borderClass: "border-border/60",
-      bgClass: "bg-muted/30",
-      iconClass: "text-muted-foreground",
-    },
-  }[variant];
+  const hasCodeComparison = comment.oldCode && comment.newCode;
+  const hasSuggestion = comment.suggestion || comment.codeSuggestion || hasCodeComparison;
+  // Auto-expand if there's a code comparison available
+  const [expanded, setExpanded] = useState(hasCodeComparison || false);
 
-  const Icon = variantConfig.icon;
-  const pathParts = comment.file.split("/");
-  const fileName = pathParts.pop();
-  const directory = pathParts.length > 0 ? pathParts.join("/") : null;
+  const handleCopyPath = () => {
+    navigator.clipboard.writeText(`${comment.file}:${comment.line}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <Card
-      className={cn(
-        "overflow-hidden rounded-xl border transition-colors",
-        variantConfig.borderClass,
-        variantConfig.bgClass,
-      )}
-    >
-      <div className="p-5 flex items-start gap-4">
-        <div
-          className={cn(
-            "mt-0.5 w-1 min-h-[3rem] rounded-full shrink-0",
-            severityStyle.bar,
-          )}
-        />
-        <div className="flex-1 min-w-0 space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] uppercase tracking-wider font-semibold gap-1",
-                severityStyle.badge,
-              )}
-            >
-              {comment.severity}
-            </Badge>
-            <Badge
-              variant="secondary"
-              className={cn("gap-1 text-xs", variantConfig.iconClass)}
-            >
-              <Icon className="size-3" />
-              {variantConfig.label}
-            </Badge>
-            {comment.category && (
-              <Badge variant="outline" className="gap-1 text-xs">
-                <CategoryIcon className="size-3" />
-                {comment.category}
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm leading-relaxed text-foreground">
-            {comment.message}
-          </p>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground truncate">
-            <FileCode2 className="size-3.5 shrink-0 flex-shrink-0" />
-            {directory && (
-              <span className="opacity-70 truncate">{directory}/</span>
-            )}
-            <span className="font-medium text-foreground truncate">
-              {fileName}
-            </span>
-            <span className="text-primary shrink-0">:{comment.line}</span>
-          </div>
-          {comment.suggestion && (
-            <div className="mt-3 pl-4 border-l-2 border-emerald-500/30 rounded-r">
-              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">
-                Suggestion
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {comment.suggestion}
-              </p>
-            </div>
-          )}
-        </div>
+    <div className={`rounded-xl border ${config.border} ${config.bg} backdrop-blur-sm p-4 transition-all`}>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${config.badge}`}>
+          {config.icon}
+          {config.label}
+        </span>
+        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 capitalize ${getSeverityStyles(comment.severity)}`}>
+          {comment.severity}
+        </span>
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground capitalize">
+          {getCategoryIcon(comment?.category??"")}
+          {comment.category}
+        </span>
       </div>
-    </Card>
+
+      <p className="text-sm leading-relaxed">{comment.message}</p>
+
+      <div className="flex items-center gap-2 mt-2">
+        <button
+          onClick={handleCopyPath}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-mono"
+        >
+          <FileCode className="h-3 w-3" />
+          {comment.file}:{comment.line}
+          {copied ? (
+            <Check className="h-3 w-3 text-emerald-500" />
+          ) : (
+            <Copy className="h-3 w-3 opacity-50 hover:opacity-100" />
+          )}
+        </button>
+      </div>
+
+      {hasSuggestion && (
+        <div className="mt-3 pt-3 border-t border-border/20">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <Code2 className="h-3.5 w-3.5" />
+            {expanded ? "Hide" : "View"} suggestion
+            {hasCodeComparison && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary ml-1">
+                with code diff
+              </span>
+            )}
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          <AnimatePresence>
+            {expanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden mt-3"
+              >
+                {comment.codeSuggestion || hasCodeComparison ? (
+                  <SuggestionDiffViewer
+                    suggestion={comment.codeSuggestion || comment.suggestion || ""}
+                    fileName={comment.file}
+                    severity={comment.severity}
+                    oldCode={comment.oldCode}
+                    newCode={comment.newCode}
+                    lineStart={comment.lineStart || comment.line}
+                    context={comment.context}
+                  />
+                ) : (
+                  <pre className="rounded-lg bg-muted/40 border border-border/40 p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                    {comment.suggestion}
+                  </pre>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
   );
 }

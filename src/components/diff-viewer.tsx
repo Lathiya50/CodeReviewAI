@@ -1,24 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
-  ChevronDown,
   ChevronRight,
-  Plus,
-  Minus,
+  FileCode,
   FilePlus,
-  FileMinus,
-  FileEdit,
-  FileText,
+  FileX,
+  FilePen,
   Copy,
   Check,
-  FolderTree,
-  AlertCircle,
+  ChevronsUpDown,
+  ChevronsDownUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface DiffFile {
   sha: string;
@@ -28,262 +24,116 @@ interface DiffFile {
   deletions: number;
   changes: number;
   patch?: string;
-  previousFilename?: string;
 }
 
 interface DiffViewerProps {
   files: DiffFile[];
 }
 
-export function DiffViewer({ files }: DiffViewerProps) {
-  const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
-  const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);
-  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(
-    new Set(files.slice(0, 3).map((f) => f.sha)),
-  );
-
-  const toggleFile = (sha: string) => {
-    const next = new Set(expandedFiles);
-    if (next.has(sha)) {
-      next.delete(sha);
-    } else {
-      next.add(sha);
-    }
-    setExpandedFiles(next);
+function getStatusConfig(status: string) {
+  const configs: Record<string, { icon: typeof FileCode; color: string; label: string }> = {
+    added: { icon: FilePlus, color: "text-emerald-500", label: "Added" },
+    removed: { icon: FileX, color: "text-red-500", label: "Removed" },
+    modified: { icon: FilePen, color: "text-amber-500", label: "Modified" },
+    renamed: { icon: FilePen, color: "text-blue-500", label: "Renamed" },
   };
+  return configs[status] || configs.modified;
+}
 
-  const expandAll = () => {
-    setExpandedFiles(new Set(files.map((f) => f.sha)));
-  };
-
-  const collapseAll = () => {
-    setExpandedFiles(new Set());
-  };
+function ChangeBar({ additions, deletions }: { additions: number; deletions: number }) {
+  const total = additions + deletions;
+  if (total === 0) return null;
+  const blocks = Math.min(total, 5);
+  const addBlocks = Math.round((additions / total) * blocks);
+  const delBlocks = blocks - addBlocks;
 
   return (
-    <div className="space-y-4">
-      {/* Summary bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FolderTree className="size-4 text-primary" />
-            </div>
-            <div>
-              <span className="text-base font-medium tabular-nums">
-                {files.length}
-              </span>
-              <span className="text-sm text-muted-foreground ml-1.5">
-                {files.length === 1 ? "file" : "files"} changed
-              </span>
-            </div>
-          </div>
-
-          <div className="h-5 w-px bg-border" />
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-              <Plus className="size-3.5" />
-              <span className="tabular-nums">{totalAdditions}</span>
-            </span>
-            <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
-              <Minus className="size-3.5" />
-              <span className="tabular-nums">{totalDeletions}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant={"ghost"} size={"sm"} onClick={expandAll}>
-            Expand all
-          </Button>
-          <Button variant={"ghost"} size={"sm"} onClick={collapseAll}>
-            Collapse all
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {files.map((file) => (
-          <DiffFileCard
-            key={file.sha}
-            file={file}
-            expanded={expandedFiles.has(file.sha)}
-            onToggle={() => toggleFile(file.sha)}
-          />
-        ))}
-      </div>
-    </div>
+    <span className="flex items-center gap-px">
+      {Array.from({ length: addBlocks }).map((_, i) => (
+        <span key={`a${i}`} className="h-2 w-2 rounded-sm bg-emerald-500" />
+      ))}
+      {Array.from({ length: delBlocks }).map((_, i) => (
+        <span key={`d${i}`} className="h-2 w-2 rounded-sm bg-red-500" />
+      ))}
+    </span>
   );
 }
 
-function DiffFileCard({
-  file,
-  expanded,
-  onToggle,
-}: {
-  file: DiffFile;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const StatusIcon = getStatusIcon(file.status);
-  const statusConfig = getStatusConfig(file.status);
-
-  const copyFilename = () => {
-    navigator.clipboard.writeText(file.filename);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const pathParts = file.filename.split("/");
-  const fileName = pathParts.pop();
-  const directory = pathParts.join("/");
-
-  return (
-    <Card className="overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
-      >
-        <div className="shrink-0">
-          {expanded ? (
-            <ChevronDown className="size-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="size-4 text-muted-foreground" />
-          )}
-        </div>
-
-        <div className={cn("p-1.5 rounded-md shrink-0", statusConfig.bg)}>
-          {React.createElement(StatusIcon, {
-            className: cn("size-4 text-muted-foreground truncate"),
-          })}
-        </div>
-
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          {directory && (
-            <span className="text-sm text-muted-foreground font-mono truncate">
-              {directory}/
-            </span>
-          )}
-          <span className="text-sm font-medium font-mono truncate">
-            {fileName}
-          </span>
-          {file.previousFilename && (
-            <Badge variant={"outline"} className="text-xs shrink-0">
-              {file.previousFilename}
-            </Badge>
-          )}
-          {file.changes > 300 && (
-            <Badge
-              variant={"outline"}
-              className="text-[10px] shrink-0 gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-            >
-              <AlertCircle className="size-3" />
-              Large changes
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Change bar visualization */}
-          <div className="hidden sm:flex items-center gap-0.5">
-            {Array.from({ length: Math.min(5, file.additions) }).map((_, i) => (
-              <div
-                key={`add-${i}`}
-                className="w-1.5 h-3 rounded-sm bg-emerald-500"
-              />
-            ))}
-            {Array.from({ length: Math.min(5, file.deletions) }).map((_, i) => (
-              <div
-                key={`del-${i}`}
-                className="w-1.5 h-3 rounded-sm bg-red-500"
-              />
-            ))}
-            {file.additions + file.deletions === 0 && (
-              <div className="w-1.5 h-3 rounded-sm bg-muted-foreground" />
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 text-xs tabular-nums">
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-              +{file.additions}
-            </span>
-            <span className="text-red-600 dark:text-red-400 font-medium">
-              -{file.deletions}
-            </span>
-          </div>
-        </div>
-      </button>
-
-      {/* Expanded content */}
-      {expanded && (
-        <CardContent className="p-0 border-t border-border/60">
-          {file.patch ? (
-            <div className="relative">
-              <Button
-                variant={"ghost"}
-                size={"icon-sm"}
-                className="absolute top-2 right-2 z-10 opacity-10 hover:opacity-100 focus:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyFilename();
-                }}
-              >
-                {copied ? <Check /> : <Copy className="w-4 h-4" />}
-              </Button>
-
-              <DiffContent patch={file.patch} />
-            </div>
-          ) : (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              <FileText className="size-8 mx-auto mb-2 opacity-50" />
-              <p>No diff available for this file.</p>
-              <p className="text-xs mt-1">
-                Binary file or too large to display.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      )}
-    </Card>
-  );
+function parseLine(line: string) {
+  if (line.startsWith("@@")) return { type: "hunk" as const, content: line };
+  if (line.startsWith("+")) return { type: "add" as const, content: line.slice(1) };
+  if (line.startsWith("-")) return { type: "del" as const, content: line.slice(1) };
+  if (line.startsWith("\\")) return { type: "meta" as const, content: line };
+  return { type: "context" as const, content: line.startsWith(" ") ? line.slice(1) : line };
 }
 
 function DiffContent({ patch }: { patch: string }) {
   const lines = patch.split("\n");
-  let oldLineNum = 0;
-  let newLineNum = 0;
+  let oldLine = 0;
+  let newLine = 0;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto border-t border-border/30">
       <table className="w-full text-xs font-mono">
         <tbody>
-          {lines.map((line, index) => {
-            const lineInfo = parseLine(line, oldLineNum, newLineNum);
+          {lines.map((rawLine, i) => {
+            const { type, content } = parseLine(rawLine);
 
-            if (lineInfo.isHunk) {
-              const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
-              if (match?.[1] && match?.[2]) {
-                oldLineNum = parseInt(match[1], 10) - 1;
-                newLineNum = parseInt(match[2], 10) - 1;
+            if (type === "hunk") {
+              const match = content.match(/@@ -(\d+)(?:,\d+)? \+(\d+)/);
+              if (match) {
+                oldLine = parseInt(match[1], 10);
+                newLine = parseInt(match[2], 10);
               }
-            } else if (lineInfo.type === "deletion") {
-              oldLineNum++;
-            } else if (lineInfo.type === "addition") {
-              newLineNum++;
-            } else if (lineInfo.type === "context") {
-              oldLineNum++;
-              newLineNum++;
+              return (
+                <tr key={i} className="bg-primary/5">
+                  <td colSpan={3} className="px-3 py-1.5 text-xs text-primary/70 font-medium">
+                    {content}
+                  </td>
+                </tr>
+              );
+            }
+
+            if (type === "meta") return null;
+
+            let displayOld = "";
+            let displayNew = "";
+
+            if (type === "del") {
+              displayOld = String(oldLine++);
+            } else if (type === "add") {
+              displayNew = String(newLine++);
+            } else {
+              displayOld = String(oldLine++);
+              displayNew = String(newLine++);
             }
 
             return (
-              <DiffTableRow
-                key={index}
-                line={line}
-                oldNum={lineInfo.type === "addition" ? null : oldLineNum}
-                newNum={lineInfo.type === "deletion" ? null : newLineNum}
-                lineInfo={lineInfo}
-              />
+              <tr
+                key={i}
+                className={cn(
+                  "group hover:brightness-110 transition-all",
+                  type === "add" && "bg-emerald-500/8",
+                  type === "del" && "bg-red-500/8"
+                )}
+              >
+                <td className="w-10 select-none text-right px-2 py-0 text-muted-foreground/40 border-r border-border/20">
+                  {displayOld}
+                </td>
+                <td className="w-10 select-none text-right px-2 py-0 text-muted-foreground/40 border-r border-border/20">
+                  {displayNew}
+                </td>
+                <td className="px-3 py-0 whitespace-pre">
+                  <span className={cn(
+                    "inline-block w-4 select-none",
+                    type === "add" && "text-emerald-500",
+                    type === "del" && "text-red-500"
+                  )}>
+                    {type === "add" ? "+" : type === "del" ? "-" : " "}
+                  </span>
+                  {content}
+                </td>
+              </tr>
             );
           })}
         </tbody>
@@ -292,137 +142,150 @@ function DiffContent({ patch }: { patch: string }) {
   );
 }
 
-function getStatusIcon(status: string) {
-  switch (status) {
-    case "added":
-      return FilePlus;
-    case "removed":
-      return FileMinus;
-    case "modified":
-    case "changed":
-      return FileEdit;
-    case "renamed":
-      return FileEdit;
-    default:
-      return FileText;
-  }
-}
-
-function getStatusConfig(status: string) {
-  switch (status) {
-    case "added":
-      return {
-        color: "text-emerald-600 dark:text-emerald-400",
-        bg: "bg-emerald-500/10",
-      };
-    case "removed":
-      return {
-        color: "text-red-600 dark:text-red-400",
-        bg: "bg-red-500/10",
-      };
-    case "modified":
-    case "changed":
-      return {
-        color: "text-amber-600 dark:text-amber-400",
-        bg: "bg-amber-500/10",
-      };
-    case "renamed":
-      return {
-        color: "text-blue-600 dark:text-blue-400",
-        bg: "bg-blue-500/10",
-      };
-    default:
-      return {
-        color: "text-muted-foreground",
-        bg: "bg-muted",
-      };
-  }
-}
-
-interface LineInfo {
-  type: "addition" | "deletion" | "context" | "hunk";
-  isHunk: boolean;
-}
-
-function parseLine(line: string, _oldNum: number, _newNum: number): LineInfo {
-  if (line.startsWith("@@")) {
-    return { type: "hunk", isHunk: true };
-  }
-  if (line.startsWith("+")) {
-    return { type: "addition", isHunk: false };
-  }
-  if (line.startsWith("-")) {
-    return { type: "deletion", isHunk: false };
-  }
-  return { type: "context", isHunk: false };
-}
-
-function DiffTableRow({
-  line,
-  lineInfo,
-  oldNum,
-  newNum,
+function DiffFileCard({
+  file,
+  isOpen,
+  onToggle,
 }: {
-  line: string;
-  lineInfo: LineInfo;
-  oldNum: number | null;
-  newNum: number | null;
+  file: DiffFile;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
-  const bgClass = {
-    addition: "bg-emerald-500/10",
-    deletion: "bg-red-500/10",
-    hunk: "bg-blue-500/10",
-    context: "",
-  }[lineInfo.type];
+  const [copied, setCopied] = useState(false);
+  const config = getStatusConfig(file.status);
+  const Icon = config.icon;
 
-  const textClass = {
-    addition: "text-emerald-700 dark:text-emerald-300",
-    deletion: "text-red-700 dark:text-red-300",
-    hunk: "text-blue-600 dark:text-blue-400",
-    context: "text-foreground",
-  }[lineInfo.type];
+  const pathParts = file.filename.split("/");
+  const fileName = pathParts.pop() || file.filename;
+  const dirPath = pathParts.join("/");
 
-  const lineNumClass = {
-    addition: "bg-emerald-500/5 text-emerald-600/70 dark:text-emerald-400/70",
-    deletion: "bg-red-500/5 text-red-600/70 dark:text-red-400/70",
-    hunk: "bg-blue-500/5",
-    context: "text-muted-foreground/50",
-  }[lineInfo.type];
-
-  if (lineInfo.isHunk) {
-    return (
-      <tr className={bgClass}>
-        <td
-          colSpan={3}
-          className={cn("px-4 py-1.5 text-xs", textClass, lineNumClass)}
-        >
-          {line}
-        </td>
-      </tr>
-    );
-  }
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(file.filename);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <tr className={cn("group", bgClass)}>
-      <td
-        className={cn(
-          "w-12 px-2 py-0.5 text-right select-none border-r border-border/30",
-          lineNumClass,
-        )}
+    <div className="rounded-xl border border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
       >
-        {oldNum || ""}
-      </td>
-      <td
-        className={cn(
-          "w-12 px-2 py-0.5 text-right select-none border-r border-border/30",
-          lineNumClass,
+        <motion.div
+          animate={{ rotate: isOpen ? 90 : 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </motion.div>
+
+        <Icon className={cn("h-4 w-4 shrink-0", config.color)} />
+
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+          {dirPath && (
+            <span className="text-xs text-muted-foreground truncate">{dirPath}/</span>
+          )}
+          <span className="text-sm font-medium truncate">{fileName}</span>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0 text-xs">
+          <span className="text-emerald-500">+{file.additions}</span>
+          <span className="text-red-500">-{file.deletions}</span>
+          <ChangeBar additions={file.additions} deletions={file.deletions} />
+        </div>
+
+        <button
+          onClick={handleCopy}
+          className="shrink-0 p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && file.patch && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <DiffContent patch={file.patch} />
+          </motion.div>
         )}
-      >
-        {newNum || ""}
-      </td>
-      <td className={cn("px-4 py-0.5 whitespace-pre", textClass)}>
-        {line.slice(1) || " "}
-      </td>
-    </tr>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function DiffViewer({ files }: DiffViewerProps) {
+  const [openFiles, setOpenFiles] = useState<Set<string>>(new Set());
+
+  const toggleFile = (sha: string) => {
+    setOpenFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(sha)) next.delete(sha);
+      else next.add(sha);
+      return next;
+    });
+  };
+
+  const expandAll = () => setOpenFiles(new Set(files.map((f) => f.sha)));
+  const collapseAll = () => setOpenFiles(new Set());
+
+  const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
+  const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);
+
+  return (
+    <div>
+      {/* Summary bar */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <FileCode className="h-4 w-4" />
+            {files.length} files
+          </span>
+          <span className="text-emerald-500">+{totalAdditions}</span>
+          <span className="text-red-500">-{totalDeletions}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={expandAll}
+            className="text-xs gap-1 h-7"
+          >
+            <ChevronsUpDown className="h-3 w-3" />
+            Expand all
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={collapseAll}
+            className="text-xs gap-1 h-7"
+          >
+            <ChevronsDownUp className="h-3 w-3" />
+            Collapse all
+          </Button>
+        </div>
+      </div>
+
+      {/* File list */}
+      <div className="space-y-2">
+        {files.map((file) => (
+          <DiffFileCard
+            key={file.sha}
+            file={file}
+            isOpen={openFiles.has(file.sha)}
+            onToggle={() => toggleFile(file.sha)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

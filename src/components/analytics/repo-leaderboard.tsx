@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 import { FolderGit2, Trophy } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface RepoData {
   repoName: string;
@@ -20,167 +14,87 @@ interface RepoData {
 }
 
 interface RepoLeaderboardProps {
-  data: RepoData[];
-  isLoading?: boolean;
+  data: RepoData[] | undefined;
+  isLoading: boolean;
 }
 
-const MEDALS = ["🥇", "🥈", "🥉"];
-
-/**
- * Returns a badge variant based on risk score.
- * @param score - numeric risk score (0–100)
- * @returns shadcn Badge variant
- */
-function getRiskVariant(
-  score: number,
-): "default" | "secondary" | "destructive" | "outline" {
-  if (score <= 30) return "default";
-  if (score <= 60) return "secondary";
-  return "destructive";
+function getRiskBadge(score: number | null) {
+  if (score === null) return null;
+  if (score <= 30)
+    return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]">{score.toFixed(0)}</Badge>;
+  if (score <= 60)
+    return <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px]">{score.toFixed(0)}</Badge>;
+  return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px]">{score.toFixed(0)}</Badge>;
 }
 
-/**
- * Inline progress bar showing the completed/total ratio.
- * @param completed - completed review count
- * @param total - total review count
- */
-function ProgressBar({
-  completed,
-  total,
-}: {
-  completed: number;
-  total: number;
-}) {
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  return (
-    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className="h-1 rounded-full bg-emerald-500 transition-all duration-500"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
+const MEDAL_ICONS = ["🥇", "🥈", "🥉"];
 
-/**
- * RepoLeaderboard — ranked list of repositories by total review volume.
- * @param data - array of repo stats sorted by total desc
- * @param isLoading - whether data is loading
- */
-export function RepoLeaderboard({
-  data,
-  isLoading = false,
-}: RepoLeaderboardProps) {
+export function RepoLeaderboard({ data, isLoading }: RepoLeaderboardProps) {
   if (isLoading) {
     return (
-      <Card className="rounded-xl">
-        <CardHeader className="px-6 pt-6 pb-4">
-          <div className="space-y-2">
-            <div className="h-4 w-36 animate-pulse rounded-md bg-muted" />
-            <div className="h-3 w-48 animate-pulse rounded-md bg-muted" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3 px-6 pb-6">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
-              <div className="size-7 animate-pulse rounded-full bg-muted" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 w-32 animate-pulse rounded-md bg-muted" />
-                <div className="h-2.5 w-20 animate-pulse rounded-md bg-muted" />
-              </div>
-              <div className="h-6 w-14 animate-pulse rounded-md bg-muted" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <Card className="rounded-xl">
-        <CardHeader className="px-6 pt-6 pb-4">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Trophy className="size-4 text-yellow-500" />
-            Repo Leaderboard
-          </CardTitle>
-          <CardDescription className="text-sm">Most reviewed repositories</CardDescription>
-        </CardHeader>
-        <CardContent className="flex h-[200px] items-center justify-center px-6 pb-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <FolderGit2 className="size-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">No repositories yet</p>
-            <p className="text-xs text-muted-foreground/70">Connect repos and trigger reviews to populate this</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+        <div className="h-5 w-32 rounded bg-muted/40 animate-pulse mb-4" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-12 rounded-lg bg-muted/20 animate-pulse mb-2" />
+        ))}
+      </div>
     );
   }
 
   return (
-    <Card className="rounded-xl">
-      <CardHeader className="px-6 pt-6 pb-2">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <Trophy className="size-4 text-yellow-500" />
-          Repo Leaderboard
-        </CardTitle>
-        <CardDescription className="mt-0.5 text-sm">
-          Top repositories by review volume
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-6 pb-6 pt-3">
-        <div className="space-y-2.5">
-          {data.map((repo, index) => {
-            const rank = index + 1;
-            return (
-              <div
-                key={repo.fullName}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-muted/40",
-                  rank === 1 && "border-yellow-200/60 bg-yellow-50/30 dark:border-yellow-900/30 dark:bg-yellow-950/10",
-                )}
-              >
-                {/* Medal / rank */}
-                <span className="w-6 shrink-0 text-center text-base leading-none">
-                  {rank <= 3 ? MEDALS[rank - 1] : (
-                    <span className="text-xs font-bold text-muted-foreground">{rank}</span>
-                  )}
-                </span>
+    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+        <Trophy className="h-4 w-4 text-primary" />
+        Repository Leaderboard
+      </h3>
 
-                {/* Repo info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <FolderGit2 className="size-3.5 shrink-0 text-muted-foreground" />
-                    <p className="truncate text-sm font-semibold leading-snug">{repo.repoName}</p>
-                  </div>
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {repo.fullName}
-                  </p>
-                  <ProgressBar completed={repo.completed} total={repo.total} />
-                </div>
+      {!data || data.length === 0 ? (
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+          No repository data available.
+        </div>
+      ) : (
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="space-y-2"
+        >
+          {data.map((repo, i) => (
+            <motion.div
+              key={repo.repoName}
+              variants={staggerItem}
+              className="flex items-center gap-3 rounded-lg border border-border/30 bg-background/30 px-3 py-2.5 hover:bg-background/50 transition-colors"
+            >
+              <span className="w-6 text-center text-sm shrink-0">
+                {i < 3 ? MEDAL_ICONS[i] : <span className="text-xs text-muted-foreground">{i + 1}</span>}
+              </span>
 
-                {/* Stats */}
-                <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <div className="text-right">
-                    <span className="text-sm font-bold tabular-nums">{repo.total}</span>
-                    <span className="ml-1 text-[11px] text-muted-foreground">reviews</span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
+                <FolderGit2 className="h-3.5 w-3.5 text-primary" />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{repo.repoName}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex-1 max-w-[120px] h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{
+                        width: `${repo.total > 0 ? (repo.completed / repo.total) * 100 : 0}%`,
+                      }}
+                    />
                   </div>
-                  {repo.completed > 0 && (
-                    <Badge
-                      variant={getRiskVariant(repo.avgRiskScore)}
-                      className="h-5 px-1.5 text-[10px] font-semibold"
-                    >
-                      risk {repo.avgRiskScore}
-                    </Badge>
-                  )}
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {repo.completed}/{repo.total}
+                  </span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+
+              <div className="shrink-0">{getRiskBadge(repo.avgRiskScore)}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+    </div>
   );
 }

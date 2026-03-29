@@ -1,167 +1,88 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-
-interface ReviewTrendData {
-  date: string;
-  reviews: number;
-}
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { ChartSkeleton } from "@/components/shimmer-skeleton";
 
 interface ReviewChartProps {
-  data: ReviewTrendData[];
-  isLoading?: boolean;
+  data: { date: string; reviews: number }[] | undefined;
+  isLoading: boolean;
+  range: "7d" | "30d" | "90d";
+  onRangeChange: (range: "7d" | "30d" | "90d") => void;
 }
 
-const chartConfig = {
-  reviews: {
-    label: "Reviews",
-    color: "hsl(221.2 83.2% 53.3%)",
-  },
-} satisfies ChartConfig;
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border/60 bg-card/95 backdrop-blur-xl px-3 py-2 shadow-xl">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold">{payload[0].value} reviews</p>
+    </div>
+  );
+}
 
-type DayRange = 7 | 30 | 90;
-
-/**
- * ReviewChart — area chart showing reviews triggered per day.
- * Includes a 7d / 30d / 90d range pill selector.
- * @param data - array of { date, reviews } covering 90 days
- * @param isLoading - whether data is loading
- */
-export function ReviewChart({ data, isLoading = false }: ReviewChartProps) {
-  const [range, setRange] = useState<DayRange>(30);
-
-  const sliced = data.slice(-range);
-
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  const ranges: DayRange[] = [7, 30, 90];
-
+export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewChartProps) {
   if (isLoading) {
     return (
-      <Card className="rounded-xl">
-        <CardHeader className="px-6 pt-6 pb-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="h-4 w-28 animate-pulse rounded-md bg-muted" />
-              <div className="h-3 w-44 animate-pulse rounded-md bg-muted" />
-            </div>
-            <div className="h-8 w-28 animate-pulse rounded-lg bg-muted" />
-          </div>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <div className="h-[280px] animate-pulse rounded-lg bg-muted" />
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+        <ChartSkeleton />
+      </div>
     );
   }
 
   return (
-    <Card className="rounded-xl">
-      <CardHeader className="px-6 pt-6 pb-2">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base font-semibold">Review Trend</CardTitle>
-            <CardDescription className="mt-0.5 text-sm">
-              Number of reviews triggered per day
-            </CardDescription>
-          </div>
-          {/* Range selector */}
-          <div className="flex gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5">
-            {ranges.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRange(r)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150",
-                  range === r
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {r}d
-              </button>
-            ))}
-          </div>
+    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold">Review Trend</h3>
+        <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5">
+          {(["7d", "30d", "90d"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => onRangeChange(r)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${r === range ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {r}
+            </button>
+          ))}
         </div>
-      </CardHeader>
-      <CardContent className="px-6 pb-6 pt-2">
-        <ChartContainer config={chartConfig} className="h-[280px] w-full">
-          <AreaChart
-            data={sliced}
-            margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="reviewGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-reviews)"
-                  stopOpacity={0.25}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-reviews)"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/40" />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={10}
-              tickFormatter={formatDate}
-              interval={range === 7 ? 0 : Math.floor(sliced.length / 6)}
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              allowDecimals={false}
-              tickMargin={8}
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
-                    const d = payload?.[0]?.payload?.date as string | undefined;
-                    return d ? formatDate(d) : "";
-                  }}
-                />
-              }
-            />
-            <Area
-              type="monotone"
-              dataKey="reviews"
-              stroke="var(--color-reviews)"
-              strokeWidth={2.5}
-              fill="url(#reviewGradient)"
-              dot={false}
-              activeDot={{ r: 5, strokeWidth: 2 }}
-            />
-          </AreaChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="h-[250px]">
+        {data && data.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="oklch(0.67 0.23 280)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="oklch(0.67 0.23 280)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.02 268 / 30%)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" allowDecimals={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="reviews"
+                stroke="oklch(0.67 0.23 280)"
+                strokeWidth={2}
+                fill="url(#chartGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+            No review data for this period.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

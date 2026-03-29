@@ -1,27 +1,38 @@
 "use client";
 
-import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { signOut } from "@/lib/auth-client";
+import { LogOut, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings, User, ChevronDown } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-interface UserProps {
+interface User {
   id: string;
   name: string;
   email: string;
   image?: string | null | undefined;
 }
 
-export function UserMenu({ user }: { user: UserProps }) {
+function getInitials(name: string, email: string): string {
+  if (name) {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
+  return email[0]?.toUpperCase() || "U";
+}
+
+export function UserMenu({ user }: { user: User }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -29,73 +40,36 @@ export function UserMenu({ user }: { user: UserProps }) {
     router.push("/");
   };
 
-  const initials = user.name
-    ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : (user.email[0].toUpperCase() ?? "U");
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={"ghost"} className="h-9 gap-2 px-2 hover:bg-muted/80">
-          <Avatar className="size-7 ring-1 ring-border">
-            <AvatarImage
-              src={user.image ?? undefined}
-              alt={user.name ?? "User"}
-            />
-            <AvatarFallback className="text-sm font-medium bg-primary/10 text-primary">
-              {initials}
+        <button className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors outline-none">
+          <Avatar className="h-7 w-7 ring-1 ring-border/50">
+            <AvatarImage src={user.image ?? undefined} alt={user.name} />
+            <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
+              {getInitials(user.name, user.email)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:inline-block text-sm font-medium max-w-25 truncate">
-            {user.name ?? "User"}
+          <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+            {user.name}
           </span>
-          <ChevronDown className="size-3.5 text-muted-foreground" />
-        </Button>
+          <ChevronDown className="hidden sm:block h-3 w-3 text-muted-foreground" />
+        </button>
       </DropdownMenuTrigger>
-
-      <DropdownMenuContent align="end" className="w-64">
-        <div className="px-3 py-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="size-10 ring-1 ring-border">
-              <AvatarImage
-                src={user.image ?? undefined}
-                alt={user.name ?? "User"}
-              />
-              <AvatarFallback className="text-sm font-medium bg-primary/10 text-primary">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium truncate">
-                {user.name ?? "User"}
-              </span>
-              <span className="text-xs text-muted-foreground truncate">
-                {user.email ?? "Email"}
-              </span>
-            </div>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="gap-2 py-2 cursor-pointer" disabled>
-          <User className="size-4" />
-          Profile
-        </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2 py-2 cursor-pointer" disabled>
-          <Settings className="size-4" />
-          Settings
-        </DropdownMenuItem>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleSignOut}
-          className="gap-2 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+          className="text-destructive focus:text-destructive gap-2 cursor-pointer"
         >
-          <LogOut className="size-4" />
-          Log Out
+          <LogOut className="h-3.5 w-3.5" />
+          Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
