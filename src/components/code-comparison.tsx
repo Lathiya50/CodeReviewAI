@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Copy, Check, Code2, AlertTriangle, CheckCircle } from "lucide-react";
+import { Copy, Check,  AlertTriangle, CheckCircle } from "lucide-react";
 import { detectLanguage, truncateCode } from "@/lib/code-diff-utils";
 
 interface CodeComparisonProps {

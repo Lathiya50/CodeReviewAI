@@ -25,8 +25,20 @@ function getAppUrl(): string {
   );
 }
 
+/**
+ * Builds the public webhook endpoint GitHub delivers to. `WEBHOOK_PUBLIC_URL`
+ * takes precedence so the webhook target can be decoupled from the app/auth
+ * origin: in local dev `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` can stay on
+ * `localhost` (which GitHub can't reach) while webhooks are tunneled in via a
+ * public HTTPS URL (e.g. ngrok). Accepts either the bare origin or the full
+ * endpoint URL.
+ */
 function getWebhookUrl(): string {
-  return `${getAppUrl()}/api/webhooks/github`;
+  const explicit = process.env.WEBHOOK_PUBLIC_URL?.trim();
+  const base = explicit || getAppUrl();
+  return base.endsWith("/api/webhooks/github")
+    ? base
+    : `${base.replace(/\/+$/, "")}/api/webhooks/github`;
 }
 
 export const repositoryRouter = createTRPCRouter({
@@ -103,18 +115,10 @@ export const repositoryRouter = createTRPCRouter({
             },
           });
 
-          // Already wired up (reconnecting a repo that still has a live hook).
-          if (record.webhookId && record.webhookStatus === "ACTIVE") {
-            return {
-              id: record.id,
-              fullName: repo.fullName,
-              webhookStatus: "ACTIVE" as const,
-              webhookError: null as string | null,
-            };
-          }
-
           // Register the webhook best-effort — a failure must not abort the
           // whole batch or the DB connection. Mark the repo FAILED instead.
+          // We always (re)ensure the hook rather than trusting an ACTIVE flag,
+          // so the delivery URL and secret self-heal on every connect.
           if (!accessToken) {
             await ctx.db.repository.update({
               where: { id: record.id },
@@ -149,7 +153,7 @@ export const repositoryRouter = createTRPCRouter({
               accessToken,
               owner,
               repoName,
-              { url: webhookUrl, secret },
+              { url: webhookUrl, secret, existingHookId: record.webhookId },
             );
             await ctx.db.repository.update({
               where: { id: record.id },
@@ -303,6 +307,7 @@ export const repositoryRouter = createTRPCRouter({
         const hookId = await registerRepoWebhook(accessToken, owner, repoName, {
           url: getWebhookUrl(),
           secret,
+          existingHookId: repository.webhookId,
         });
         const updated = await ctx.db.repository.update({
           where: { id: repository.id },

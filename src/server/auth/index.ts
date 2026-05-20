@@ -23,7 +23,11 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GH_CLIENT_ID ?? "",
       clientSecret: process.env.GH_CLIENT_SECRET ?? "",
-      scope: ["read:user", "user:email", "repo"],
+      // `admin:repo_hook` is required to create/update the per-repo PR webhook
+      // used for auto-review. `repo` covers private repo access + hook
+      // management for repos the user administers; `admin:repo_hook` makes the
+      // hook permission explicit so registration works across token types.
+      scope: ["read:user", "user:email", "repo", "admin:repo_hook"],
     },
   },
   account: {
