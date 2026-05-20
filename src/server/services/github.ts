@@ -209,6 +209,151 @@ export async function fetchPullRequestFiles(
   return files;
 }
 
+// ─── Repository Webhooks ──────────────────────────────────────────────────────
+
+interface GitHubHook {
+  id: number;
+  config?: { url?: string };
+}
+
+const WEBHOOK_EVENTS = ["pull_request"] as const;
+
+/**
+ * Finds an existing repository webhook whose delivery URL matches `url`.
+ * Returns the hook id, or null if none is found / the lookup fails.
+ */
+async function findRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  url: string,
+): Promise<bigint | null> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks?per_page=100`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    },
+  );
+
+  if (!response.ok) return null;
+
+  const hooks = (await response.json()) as GitHubHook[];
+  const match = hooks.find((hook) => hook.config?.url === url);
+  return match ? BigInt(match.id) : null;
+}
+
+/**
+ * Registers a `pull_request` webhook on the repo pointing at our endpoint with a
+ * per-repo HMAC secret. If GitHub reports the hook already exists (422), the
+ * existing hook is located and PATCHed so its config (and secret) match ours,
+ * keeping signature verification consistent. Returns the GitHub hook id.
+ */
+export async function registerRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  options: { url: string; secret: string },
+): Promise<bigint> {
+  const config = {
+    url: options.url,
+    content_type: "json",
+    secret: options.secret,
+    insecure_ssl: "0",
+  };
+
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "web",
+        active: true,
+        events: WEBHOOK_EVENTS,
+        config,
+      }),
+    },
+  );
+
+  if (response.ok) {
+    const data = (await response.json()) as { id: number };
+    return BigInt(data.id);
+  }
+
+  const errorBody = await response.text();
+
+  // 422: a hook with this config already exists. Reuse it, but PATCH the config
+  // so the stored secret matches what we just generated.
+  if (response.status === 422) {
+    const existingId = await findRepoWebhook(accessToken, owner, repo, options.url);
+    if (existingId !== null) {
+      await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/hooks/${existingId.toString()}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            active: true,
+            events: WEBHOOK_EVENTS,
+            config,
+          }),
+        },
+      );
+      return existingId;
+    }
+  }
+
+  if (response.status === 403) {
+    throw new Error(
+      "Insufficient permissions to manage webhooks. Your GitHub account needs admin access to this repository.",
+    );
+  }
+  if (response.status === 401) {
+    throw new Error(
+      "GitHub authorization expired. Please reconnect your GitHub account.",
+    );
+  }
+
+  throw new Error(`Failed to register webhook (${response.status}): ${errorBody}`);
+}
+
+/**
+ * Deletes a repository webhook. A 404 (already gone) is treated as success.
+ */
+export async function deleteRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  hookId: bigint,
+): Promise<void> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks/${hookId.toString()}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    },
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to delete webhook (${response.status}): ${errorBody}`);
+  }
+}
+
 // ─── Inline PR Comments ───────────────────────────────────────────────────────
 
 export interface GitHubReviewComment {

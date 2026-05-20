@@ -8,6 +8,14 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
 import { PageHeader } from "@/components/ui/page-header";
@@ -36,7 +44,12 @@ import {
   Globe,
   Loader2,
   CheckCircle,
+  CheckCircle2,
+  AlertCircle,
   GitPullRequest,
+  Webhook,
+  RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 
 interface GithubRepo {
@@ -96,15 +109,80 @@ function RepoSelectItem({
   );
 }
 
+type ConnectedRepo = {
+  id: string;
+  name: string;
+  fullName: string;
+  private: boolean;
+  webhookStatus: "NONE" | "ACTIVE" | "FAILED";
+  autoReviewEnabled: boolean;
+  autoPostEnabled: boolean;
+  postEvent: "COMMENT" | "REQUEST_CHANGES";
+};
+
+function WebhookStatusBadge({ status }: { status: ConnectedRepo["webhookStatus"] }) {
+  if (status === "ACTIVE") {
+    return (
+      <Badge variant="success" className="gap-1">
+        <CheckCircle2 className="h-2.5 w-2.5" />
+        Webhook active
+      </Badge>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <AlertCircle className="h-2.5 w-2.5" />
+        Webhook failed
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="gap-1">
+      <Webhook className="h-2.5 w-2.5" />
+      Webhook not set
+    </Badge>
+  );
+}
+
 function ConnectedRepoCard({
   repo,
   onDisconnect,
   isDisconnecting,
 }: {
-  repo: { id: string; name: string; fullName: string; private: boolean };
+  repo: ConnectedRepo;
   onDisconnect: () => void;
   isDisconnecting: boolean;
 }) {
+  const utils = trpc.useUtils();
+
+  // Local mirror of automation state so toggles feel instant; the server is the
+  // source of truth and a refetch reconciles after each mutation.
+  const [autoReview, setAutoReview] = useState(repo.autoReviewEnabled);
+  const [autoPost, setAutoPost] = useState(repo.autoPostEnabled);
+  const [postEvent, setPostEvent] = useState<ConnectedRepo["postEvent"]>(
+    repo.postEvent,
+  );
+
+  const setAutomation = trpc.repository.setAutomation.useMutation({
+    onSuccess: () => utils.repository.list.invalidate(),
+    onError: (error) => {
+      toast.error(error.message);
+      // Revert optimistic state to whatever the server last told us.
+      setAutoReview(repo.autoReviewEnabled);
+      setAutoPost(repo.autoPostEnabled);
+      setPostEvent(repo.postEvent);
+    },
+  });
+
+  const reconnect = trpc.repository.reconnectWebhook.useMutation({
+    onSuccess: () => {
+      utils.repository.list.invalidate();
+      toast.success("Webhook connected");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -136,8 +214,8 @@ function ConnectedRepoCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Disconnect repository?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove <strong>{repo.fullName}</strong> and all its
-                review data. This action cannot be undone.
+                This will remove <strong>{repo.fullName}</strong>, its webhook on
+                GitHub, and all its review data. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -158,7 +236,7 @@ function ConnectedRepoCard({
         </AlertDialog>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {repo.private ? (
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500 ring-1 ring-amber-500/20">
             <Lock className="h-2.5 w-2.5" />
@@ -170,6 +248,96 @@ function ConnectedRepoCard({
             Public
           </span>
         )}
+        <WebhookStatusBadge status={repo.webhookStatus} />
+      </div>
+
+      {/* Automation controls */}
+      <div className="mt-4 space-y-3 rounded-lg border border-border/40 bg-background/40 p-3">
+        {repo.webhookStatus !== "ACTIVE" && (
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              {repo.webhookStatus === "FAILED"
+                ? "Webhook setup failed. Reviews won't run on push."
+                : "No webhook yet. Set one up to auto-review pushes."}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs shrink-0"
+              onClick={() => reconnect.mutate({ id: repo.id })}
+              disabled={reconnect.isPending}
+            >
+              {reconnect.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              {repo.webhookStatus === "FAILED" ? "Reconnect" : "Set up"}
+            </Button>
+          </div>
+        )}
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={autoReview}
+            disabled={setAutomation.isPending}
+            onCheckedChange={(checked) => {
+              const value = checked === true;
+              setAutoReview(value);
+              setAutomation.mutate({ id: repo.id, autoReviewEnabled: value });
+            }}
+            className="border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+          <span className="text-xs">Auto-review on push</span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={autoPost}
+            disabled={setAutomation.isPending}
+            onCheckedChange={(checked) => {
+              const value = checked === true;
+              setAutoPost(value);
+              setAutomation.mutate({ id: repo.id, autoPostEnabled: value });
+            }}
+            className="border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+          <span className="text-xs">Post result to the PR</span>
+        </label>
+
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Post as</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                disabled={!autoPost || setAutomation.isPending}
+              >
+                {postEvent === "REQUEST_CHANGES" ? "Request changes" : "Comment"}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup
+                value={postEvent}
+                onValueChange={(value) => {
+                  const next = value as ConnectedRepo["postEvent"];
+                  setPostEvent(next);
+                  setAutomation.mutate({ id: repo.id, postEvent: next });
+                }}
+              >
+                <DropdownMenuRadioItem value="COMMENT">
+                  Comment
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="REQUEST_CHANGES">
+                  Request changes
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -202,12 +370,19 @@ export default function ReposPage() {
     enabled: showImport,
   });
   const connectMutation = trpc.repository.connect.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       reposQuery.refetch();
       githubQuery.refetch();
       setSelected(new Set());
       setShowImport(false);
-      toast.success("Repositories connected successfully");
+      const failed = data.results.filter((r) => r.webhookStatus === "FAILED");
+      if (failed.length > 0) {
+        toast.warning(
+          `Connected, but webhook setup failed for ${failed.length} repo(s). Use "Reconnect" on the repo card.`,
+        );
+      } else {
+        toast.success("Repositories connected successfully");
+      }
     },
     onError: (error) => {
       toast.error(error.message);

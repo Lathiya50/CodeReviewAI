@@ -33,6 +33,10 @@ export const auth = betterAuth({
     },
   },
   session: {
+    // 7-day session lifetime. NOTE: the session *cookie* only persists across
+    // browser restarts when the client auth call uses `rememberMe: true`.
+    // The app passes this explicitly for email sign-in, email sign-up, and
+    // GitHub OAuth sign-in to guarantee persistence in both local and prod.
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 24 hours
     cookieCache: {

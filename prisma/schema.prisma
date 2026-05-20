@@ -90,8 +90,27 @@ model Repository {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── Webhook + automation ──
+  webhookId         BigInt? // GitHub hook id, for update/delete
+  webhookSecret     String? // per-repo HMAC secret (generated on register)
+  webhookStatus     WebhookStatus @default(NONE) // NONE | ACTIVE | FAILED
+  autoReviewEnabled Boolean       @default(true) // run review on push?
+  autoPostEnabled   Boolean       @default(true) // post result back to PR?
+  postEvent         PostEvent     @default(COMMENT) // COMMENT | REQUEST_CHANGES
+
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews Review[]
+}
+
+enum WebhookStatus {
+  NONE
+  ACTIVE
+  FAILED
+}
+
+enum PostEvent {
+  COMMENT
+  REQUEST_CHANGES
 }
 
 model Review {

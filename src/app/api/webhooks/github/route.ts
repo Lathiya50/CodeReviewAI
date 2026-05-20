@@ -13,17 +13,31 @@ interface PullRequestPayload {
     html_url: string;
     state: string;
     draft: boolean;
+    user?: { login: string };
   };
   repository: {
     id: number;
     full_name: string;
   };
+  sender?: {
+    login: string;
+    type?: string;
+  };
 }
 
-function verifySignature(payload: string, signature: string | null): boolean {
-  const secret = process.env.GH_WEBHOOK_SECRET;
+/**
+ * Verifies the GitHub HMAC signature against the supplied secret. Guards against
+ * the `timingSafeEqual` length-mismatch throw by comparing buffer lengths first.
+ * When no secret is available the request is allowed through (legacy behaviour
+ * for hooks configured before per-repo secrets existed).
+ */
+function verifySignature(
+  payload: string,
+  signature: string | null,
+  secret: string | undefined,
+): boolean {
   if (!secret) {
-    console.warn("GH_WEBHOOK_SECRET not set, skipping verification");
+    console.warn("No webhook secret available, skipping verification");
     return true;
   }
 
@@ -34,7 +48,15 @@ function verifySignature(payload: string, signature: string | null): boolean {
   const hmac = crypto.createHmac("sha256", secret);
   const digest = "sha256=" + hmac.update(payload).digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
+  const digestBuffer = Buffer.from(digest);
+  const signatureBuffer = Buffer.from(signature);
+
+  // timingSafeEqual throws if the buffers differ in length.
+  if (digestBuffer.length !== signatureBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(digestBuffer, signatureBuffer);
 }
 
 export async function POST(request: NextRequest) {
@@ -42,17 +64,38 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get("x-hub-signature-256");
   const event = request.headers.get("x-github-event");
 
-  // Verify the webhook signature
-  if (!verifySignature(payload, signature)) {
+  // Parse early (cheaply) so we can resolve the repo and its per-repo secret.
+  // The raw `payload` string is still what we HMAC-verify below.
+  let data: PullRequestPayload;
+  try {
+    data = JSON.parse(payload) as PullRequestPayload;
+  } catch {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // Look up the repo first so signature verification can use its per-repo
+  // secret. Falls back to the global GH_WEBHOOK_SECRET for legacy hooks.
+  const repository = data.repository?.id
+    ? await db.repository.findUnique({
+        where: { githubId: data.repository.id },
+      })
+    : null;
+
+  const secret = repository?.webhookSecret ?? process.env.GH_WEBHOOK_SECRET;
+
+  if (!verifySignature(payload, signature, secret)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  // GitHub sends a `ping` event when a webhook is first created.
+  if (event === "ping") {
+    return NextResponse.json({ message: "pong" }, { status: 200 });
   }
 
   // Only handle pull_request events
   if (event !== "pull_request") {
     return NextResponse.json({ message: "Event ignored" }, { status: 200 });
   }
-
-  const data = JSON.parse(payload) as PullRequestPayload;
 
   // Only trigger on open, synchronize (new commits), or reopen
   if (!["opened", "synchronize", "reopened"].includes(data.action)) {
@@ -67,15 +110,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Draft PR ignored" }, { status: 200 });
   }
 
-  // Find the repository in our database
-  const repository = await db.repository.findUnique({
-    where: { githubId: data.repository.id },
-    include: { user: true },
-  });
+  // Bot-loop guard. We only subscribe to `pull_request` (not
+  // `pull_request_review`), so our own posted reviews can't loop back here, but
+  // we still ignore GitHub App bot senders to avoid reacting to automation noise.
+  const senderLogin = data.sender?.login ?? "";
+  if (senderLogin.endsWith("[bot]")) {
+    return NextResponse.json(
+      { message: "Bot sender ignored" },
+      { status: 200 },
+    );
+  }
 
   if (!repository) {
     return NextResponse.json(
       { message: "Repository not connected" },
+      { status: 200 },
+    );
+  }
+
+  // Respect the per-repo automation toggle.
+  if (!repository.autoReviewEnabled) {
+    return NextResponse.json(
+      { message: "Auto-review disabled for repository" },
       { status: 200 },
     );
   }
@@ -108,7 +164,8 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Trigger the Inngest job
+  // Trigger the Inngest job. Auto-post is webhook-only — manual UI triggers keep
+  // their review-then-click flow and never set these flags.
   await inngest.send({
     name: "review/pr.requested",
     data: {
@@ -116,6 +173,8 @@ export async function POST(request: NextRequest) {
       repositoryId: repository.id,
       prNumber: data.pull_request.number,
       userId: repository.userId,
+      autoPost: repository.autoPostEnabled,
+      postEvent: repository.postEvent,
     },
   });
 

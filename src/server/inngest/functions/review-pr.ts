@@ -5,6 +5,7 @@ import {
   fetchPullRequest,
   fetchPullRequestFiles,
   getGitHubAccessToken,
+  createGitHubPRReview,
 } from "@/server/services/github";
 
 export type ReviewPREvent = {
@@ -14,6 +15,10 @@ export type ReviewPREvent = {
     repositoryId: string;
     prNumber: number;
     userId: string;
+    // Webhook-originated reviews set these to auto-post the result back to the
+    // PR. Manual UI triggers omit them and keep their review-then-click flow.
+    autoPost?: boolean;
+    postEvent?: "COMMENT" | "REQUEST_CHANGES";
   };
 };
 
@@ -32,7 +37,8 @@ export const reviewPR = inngest.createFunction(
   },
   { event: "review/pr.requested" },
   async ({ event, step }) => {
-    const { reviewId, repositoryId, prNumber, userId } = event.data;
+    const { reviewId, repositoryId, prNumber, userId, autoPost, postEvent } =
+      event.data;
 
     await step.run("update-status-processing", async () => {
       await db.review.update({
@@ -120,6 +126,42 @@ export const reviewPR = inngest.createFunction(
         },
       });
     });
+
+    // Auto-post the review back to the PR for webhook-originated reviews. A
+    // posting failure is a soft error: the review stays COMPLETED with results
+    // saved, we just record why the post didn't land. This step is cancel-safe.
+    if (autoPost && reviewResult.comments.length > 0) {
+      await step.run("post-to-github", async () => {
+        try {
+          const result = await createGitHubPRReview(
+            accessToken,
+            owner,
+            repo,
+            prNumber,
+            reviewResult.comments,
+            files,
+            postEvent ?? "COMMENT",
+            reviewResult.summary,
+          );
+          await db.review.update({
+            where: { id: reviewId },
+            data: {
+              postedToGithub: true,
+              githubReviewId: result.githubReviewId,
+            },
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to auto-post review to GitHub";
+          await db.review.update({
+            where: { id: reviewId },
+            data: { error: `Auto-post failed: ${message}` },
+          });
+        }
+      });
+    }
 
     return { success: true, reviewId };
   },

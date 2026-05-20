@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -34,7 +33,6 @@ function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleEmailSignIn = async (e: { preventDefault(): void }) => {
@@ -42,7 +40,7 @@ function SignInForm() {
     setError("");
     setLoading(true);
 
-    const result = await signIn.email({ email, password, rememberMe });
+    const result = await signIn.email({ email, password, rememberMe: true });
 
     if (result.error) {
       setError(result.error.message || "Invalid credentials. Please try again.");
@@ -56,7 +54,15 @@ function SignInForm() {
     setError("");
     setLoading(true);
     await signOut();
-    await signIn.social({ provider: "github", callbackURL: callbackUrl });
+    await signIn.social({
+      provider: "github",
+      callbackURL: callbackUrl,
+      fetchOptions: {
+        body: {
+          rememberMe: true,
+        },
+      },
+    });
   };
 
   return (
@@ -215,20 +221,6 @@ function SignInForm() {
                     required
                     className="h-11 border-border/60 bg-background/70 placeholder:text-muted-foreground/70 focus-visible:border-primary/55 focus-visible:ring-primary/35"
                   />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor="rememberMe" className="flex cursor-pointer items-center gap-2 text-sm font-normal text-muted-foreground">
-                    <Checkbox
-                      id="rememberMe"
-                      checked={rememberMe}
-                      onCheckedChange={(value) => setRememberMe(Boolean(value))}
-                      disabled={loading}
-                      className="border-border/80 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                    />
-                    Keep me signed in
-                  </Label>
-                  <span className="text-xs text-muted-foreground">7-day session</span>
                 </div>
 
                 {error && (

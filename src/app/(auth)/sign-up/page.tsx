@@ -51,6 +51,11 @@ export default function SignUpPage() {
       name,
       email,
       password,
+      fetchOptions: {
+        body: {
+          rememberMe: true,
+        },
+      },
     });
 
     if (result.error) {
@@ -67,6 +72,11 @@ export default function SignUpPage() {
     await signIn.social({
       provider: "github",
       callbackURL: "/repos",
+      fetchOptions: {
+        body: {
+          rememberMe: true,
+        },
+      },
     });
   };
 
