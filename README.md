@@ -5,10 +5,13 @@ An intelligent AI-powered code review platform that automatically analyzes GitHu
 ## Features
 
 - 🤖 **Automated Code Reviews**: Leverage AI (Google Gemini & OpenAI) to automatically review pull requests
+- ⚡ **Auto Review on Push**: Connect a repo once — every new PR and every pushed commit is reviewed and commented on automatically, with zero manual steps
+- 🪝 **Automatic Webhook Setup**: Connecting a repo auto-registers a GitHub webhook (with a per-repo secret); disconnecting tears it down
 - 🔐 **GitHub Integration**: Seamless authentication and repository synchronization
 - 📊 **Dashboard Analytics**: Visualize review statistics, activity heatmaps, and risk scores
 - 🎯 **Risk Assessment**: Intelligent scoring system to identify potential issues
 - 💬 **Inline Comments**: AI-generated comments posted directly to GitHub PRs
+- 🎛️ **Per-Repo Automation Controls**: Toggle auto-review and auto-post, and choose `COMMENT` vs `REQUEST_CHANGES` per repository
 - 🔄 **Background Processing**: Asynchronous review processing using Inngest
 - 🌙 **Dark Mode**: Built-in theme support for comfortable viewing
 - 📱 **Responsive Design**: Works seamlessly across desktop and mobile devices
@@ -107,11 +110,12 @@ INNGEST_SIGNING_KEY="your-inngest-signing-key"
 
 1. **Authentication**: Users sign in with their GitHub account
 2. **Repository Sync**: The app syncs accessible GitHub repositories
-3. **Webhook Integration**: GitHub webhooks trigger reviews on new pull requests
-4. **AI Analysis**: Pull requests are analyzed using AI models (Gemini/OpenAI)
-5. **Review Generation**: AI generates comprehensive feedback with risk scores
-6. **Comment Posting**: Reviews are automatically posted back to GitHub
-7. **Dashboard**: Users can view all reviews, statistics, and activity
+3. **Auto Webhook Registration**: Connecting a repo automatically creates a GitHub webhook (subscribed to `pull_request` events) with a per-repo HMAC secret — no manual webhook setup
+4. **Push Triggers Review**: Opening a PR or pushing commits to an open PR delivers a `pull_request` event to the webhook, which creates a review and enqueues an Inngest job
+5. **AI Analysis**: Pull requests are analyzed using AI models (Gemini/OpenAI)
+6. **Review Generation**: AI generates comprehensive feedback with risk scores
+7. **Comment Posting**: When auto-post is enabled, reviews are posted back to the PR automatically (inline comments)
+8. **Dashboard**: Users can view all reviews, statistics, and activity
 
 ## Database Schema
 
@@ -142,6 +146,16 @@ aicodereviewer/
 ```
 
 ## Key Features Explained
+
+### Automatic PR Review on Push
+The core promise: connect a repository once, and every PR is reviewed automatically — no manual clicks.
+
+- **On connect**: the app calls the GitHub API to register a repository webhook pointing at `${APP_URL}/api/webhooks/github`, subscribed to `pull_request` events, with a freshly generated per-repo secret. The hook id, secret, and status are stored on the `Repository` row (`webhookStatus` becomes `ACTIVE`).
+- **On push**: GitHub delivers a `pull_request` event when a PR is **opened**, **synchronized** (new commits), or **reopened**. Draft PRs, ignored actions, and bot senders are skipped. The webhook verifies the HMAC signature against the per-repo secret, creates a `Review`, and sends a `review/pr.requested` Inngest event.
+- **On review complete**: if `autoPostEnabled` is on, the Inngest job posts the AI review back to the PR as inline comments (`COMMENT` or `REQUEST_CHANGES`). A post failure is a soft error — the review still saves and shows `COMPLETED`.
+- **Per-repo controls**: `autoReviewEnabled` (run review on push), `autoPostEnabled` (post back to GitHub vs. dashboard-only), and `postEvent`. A `reconnectWebhook` action re-registers a failed/missing hook; `disconnect` deletes the hook from GitHub.
+
+> **Local development note:** GitHub must reach the webhook endpoint over **public HTTPS** — it cannot deliver to `localhost`. For local testing, run a tunnel (e.g. `ngrok http 3000`) and point `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` at the tunnel URL so the registered webhook and the OAuth callback both use it. A plain `git push` does **not** trigger a review — the change must arrive as a Pull Request (opened, or new commits on an already-open PR).
 
 ### Automated Reviews
 When a pull request is opened or updated, the system:
