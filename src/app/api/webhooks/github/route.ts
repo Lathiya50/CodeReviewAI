@@ -59,6 +59,24 @@ function verifySignature(
   return crypto.timingSafeEqual(digestBuffer, signatureBuffer);
 }
 
+function verifySignatureAgainstSecrets(
+  payload: string,
+  signature: string | null,
+  secrets: Array<string | null | undefined>,
+): boolean {
+  const availableSecrets = secrets.filter(
+    (secret): secret is string => Boolean(secret),
+  );
+
+  if (availableSecrets.length === 0) {
+    return verifySignature(payload, signature, undefined);
+  }
+
+  return availableSecrets.some((secret) =>
+    verifySignature(payload, signature, secret),
+  );
+}
+
 export async function POST(request: NextRequest) {
   const payload = await request.text();
   const signature = request.headers.get("x-hub-signature-256");
@@ -81,9 +99,10 @@ export async function POST(request: NextRequest) {
       })
     : null;
 
-  const secret = repository?.webhookSecret ?? process.env.GH_WEBHOOK_SECRET;
+  const secret = repository?.webhookSecret;
+  const fallbackSecret = process.env.GH_WEBHOOK_SECRET;
 
-  if (!verifySignature(payload, signature, secret)) {
+  if (!verifySignatureAgainstSecrets(payload, signature, [secret, fallbackSecret])) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
