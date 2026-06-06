@@ -35,13 +35,13 @@ function DiffLineRow({ line, showLineNumbers }: { line: DiffLine; showLineNumber
   }
 
   return (
-    <tr className={cn("group transition-colors hover:brightness-105", classes.bg)}>
+    <tr className={cn("group transition-colors hover:bg-muted/40", classes.bg)}>
       {showLineNumbers && (
         <>
-          <td className="w-10 select-none text-right px-2 py-0.5 text-muted-foreground/40 border-r border-border/20 font-mono text-xs">
+          <td className="w-10 select-none text-right px-2 py-0.5 text-muted-foreground border-r border-border/40 font-mono text-xs">
             {line.type !== "add" ? line.oldLineNumber : ""}
           </td>
-          <td className="w-10 select-none text-right px-2 py-0.5 text-muted-foreground/40 border-r border-border/20 font-mono text-xs">
+          <td className="w-10 select-none text-right px-2 py-0.5 text-muted-foreground border-r border-border/40 font-mono text-xs">
             {line.type !== "del" ? line.newLineNumber : ""}
           </td>
         </>
@@ -118,10 +118,10 @@ export function CodeDiff({
           )}
           <div className="flex items-center gap-2 text-xs">
             {stats.additions > 0 && (
-              <span className="text-emerald-500">+{stats.additions}</span>
+              <span className="text-success">+{stats.additions}</span>
             )}
             {stats.deletions > 0 && (
-              <span className="text-red-500">-{stats.deletions}</span>
+              <span className="text-danger">-{stats.deletions}</span>
             )}
           </div>
         </div>
@@ -131,8 +131,8 @@ export function CodeDiff({
         >
           {copied ? (
             <>
-              <Check className="h-3 w-3 text-emerald-500" />
-              <span className="text-emerald-500">Copied</span>
+              <Check className="h-3 w-3 text-success" />
+              <span className="text-success">Copied</span>
             </>
           ) : (
             <>

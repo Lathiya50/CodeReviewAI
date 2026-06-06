@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,7 +94,7 @@ function RepoSelectItem({
             <span className="text-[10px] text-muted-foreground">{repo.language}</span>
           )}
           {repo.private ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+            <span className="flex items-center gap-0.5 text-[10px] text-warning">
               <Lock className="h-2.5 w-2.5" />
               Private
             </span>
@@ -238,12 +239,12 @@ function ConnectedRepoCard({
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {repo.private ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500 ring-1 ring-amber-500/20">
+          <span className="inline-flex items-center gap-1 rounded-md bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning ring-1 ring-warning/20">
             <Lock className="h-2.5 w-2.5" />
             Private
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500 ring-1 ring-emerald-500/20">
+          <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success ring-1 ring-success/20">
             <Globe className="h-2.5 w-2.5" />
             Public
           </span>
@@ -482,7 +483,7 @@ export default function ReposPage() {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-6 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+            <Card className="block mt-6 p-5">
               {isGithubNotLinked ? (
                 <ConnectGithub />
               ) : (
@@ -562,7 +563,7 @@ export default function ReposPage() {
                   )}
                 </>
               )}
-            </div>
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>

@@ -42,8 +42,8 @@ export function StatsCards({ data, isLoading }: StatsCardsProps) {
       value: data.avgRiskScore,
       decimals: 1,
       icon: AlertTriangle,
-      iconColor: data.avgRiskScore <= 30 ? "text-emerald-500" : data.avgRiskScore <= 60 ? "text-amber-500" : "text-red-500",
-      iconBg: data.avgRiskScore <= 30 ? "bg-emerald-500/10 ring-emerald-500/20" : data.avgRiskScore <= 60 ? "bg-amber-500/10 ring-amber-500/20" : "bg-red-500/10 ring-red-500/20",
+      iconColor: data.avgRiskScore <= 30 ? "text-success" : data.avgRiskScore <= 60 ? "text-warning" : "text-danger",
+      iconBg: data.avgRiskScore <= 30 ? "bg-success/10 ring-success/20" : data.avgRiskScore <= 60 ? "bg-warning/10 ring-warning/20" : "bg-danger/10 ring-danger/20",
     },
     {
       title: "Pass Rate",
@@ -51,15 +51,15 @@ export function StatsCards({ data, isLoading }: StatsCardsProps) {
       suffix: "%",
       decimals: 1,
       icon: CheckCircle,
-      iconColor: data.passRate >= 80 ? "text-emerald-500" : data.passRate >= 50 ? "text-amber-500" : "text-red-500",
-      iconBg: data.passRate >= 80 ? "bg-emerald-500/10 ring-emerald-500/20" : data.passRate >= 50 ? "bg-amber-500/10 ring-amber-500/20" : "bg-red-500/10 ring-red-500/20",
+      iconColor: data.passRate >= 80 ? "text-success" : data.passRate >= 50 ? "text-warning" : "text-danger",
+      iconBg: data.passRate >= 80 ? "bg-success/10 ring-success/20" : data.passRate >= 50 ? "bg-warning/10 ring-warning/20" : "bg-danger/10 ring-danger/20",
     },
     {
       title: "Failed Reviews",
       value: data.failed,
       icon: XCircle,
-      iconColor: data.failed === 0 ? "text-emerald-500" : "text-red-500",
-      iconBg: data.failed === 0 ? "bg-emerald-500/10 ring-emerald-500/20" : "bg-red-500/10 ring-red-500/20",
+      iconColor: data.failed === 0 ? "text-success" : "text-danger",
+      iconBg: data.failed === 0 ? "bg-success/10 ring-success/20" : "bg-danger/10 ring-danger/20",
     },
   ];
 
@@ -76,7 +76,7 @@ export function StatsCards({ data, isLoading }: StatsCardsProps) {
           <motion.div
             key={card.title}
             variants={staggerItem}
-            className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 hover:border-border/70 transition-colors"
+            className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-muted-foreground">{card.title}</span>

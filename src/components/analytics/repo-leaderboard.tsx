@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { FolderGit2, Trophy } from "lucide-react";
 
@@ -21,10 +22,10 @@ interface RepoLeaderboardProps {
 function getRiskBadge(score: number | null) {
   if (score === null) return null;
   if (score <= 30)
-    return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]">{score.toFixed(0)}</Badge>;
+    return <Badge variant="success" className="text-[10px]">{score.toFixed(0)}</Badge>;
   if (score <= 60)
-    return <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px]">{score.toFixed(0)}</Badge>;
-  return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px]">{score.toFixed(0)}</Badge>;
+    return <Badge variant="warning" className="text-[10px]">{score.toFixed(0)}</Badge>;
+  return <Badge variant="danger" className="text-[10px]">{score.toFixed(0)}</Badge>;
 }
 
 const MEDAL_ICONS = ["🥇", "🥈", "🥉"];
@@ -32,17 +33,17 @@ const MEDAL_ICONS = ["🥇", "🥈", "🥉"];
 export function RepoLeaderboard({ data, isLoading }: RepoLeaderboardProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <div className="h-5 w-32 rounded bg-muted/40 animate-pulse mb-4" />
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-12 rounded-lg bg-muted/20 animate-pulse mb-2" />
         ))}
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
         <Trophy className="h-4 w-4 text-primary" />
         Repository Leaderboard
@@ -78,7 +79,7 @@ export function RepoLeaderboard({ data, isLoading }: RepoLeaderboardProps) {
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="flex-1 max-w-[120px] h-1.5 rounded-full bg-muted/40 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      className="h-full rounded-full bg-success transition-all"
                       style={{
                         width: `${repo.total > 0 ? (repo.completed / repo.total) * 100 : 0}%`,
                       }}
@@ -95,6 +96,6 @@ export function RepoLeaderboard({ data, isLoading }: RepoLeaderboardProps) {
           ))}
         </motion.div>
       )}
-    </div>
+    </Card>
   );
 }

@@ -10,6 +10,7 @@ import {
   Cell,
 } from "recharts";
 import { ChartSkeleton } from "@/components/shimmer-skeleton";
+import { Card } from "@/components/ui/card";
 
 interface TopIssuesProps {
   data: { category: string; count: number }[] | undefined;
@@ -37,14 +38,14 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function TopIssues({ data, isLoading }: TopIssuesProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <ChartSkeleton />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <h3 className="text-sm font-semibold mb-4">Top Issues</h3>
 
       {!data || data.length === 0 ? (
@@ -77,6 +78,6 @@ export function TopIssues({ data, isLoading }: TopIssuesProps) {
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

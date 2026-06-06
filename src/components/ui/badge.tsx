@@ -19,10 +19,12 @@ const badgeVariants = cva(
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
         success:
-          "border-transparent bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+          "border-transparent bg-success/10 text-success ring-1 ring-success/20",
         warning:
-          "border-transparent bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-        info: "border-transparent bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+          "border-transparent bg-warning/10 text-warning ring-1 ring-warning/20",
+        danger:
+          "border-transparent bg-danger/10 text-danger ring-1 ring-danger/20",
+        info: "border-transparent bg-info/10 text-info ring-1 ring-info/20",
       },
     },
     defaultVariants: {

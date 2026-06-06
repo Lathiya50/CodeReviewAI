@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { StatsCards } from "@/components/analytics/stats-cards";
 import { ReviewChart } from "@/components/analytics/review-chart";
 import { RiskDistribution } from "@/components/analytics/risk-distribution";
@@ -88,7 +89,7 @@ export default function AnalyticsPage() {
 
         <div className="space-y-6">
           {/* Overall Health */}
-          <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+          <Card className="block p-5">
             <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               Overall Health
@@ -102,7 +103,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-emerald-500"
+                      className="h-full rounded-full bg-success"
                       initial={{ width: 0 }}
                       animate={{ width: `${stats.passRate}%` }}
                       transition={{ duration: 1, delay: 0.5 }}
@@ -116,7 +117,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
                     <motion.div
-                      className={`h-full rounded-full ${stats.avgRiskScore <= 30 ? "bg-emerald-500" : stats.avgRiskScore <= 60 ? "bg-amber-500" : "bg-red-500"}`}
+                      className={`h-full rounded-full ${stats.avgRiskScore <= 30 ? "bg-success" : stats.avgRiskScore <= 60 ? "bg-warning" : "bg-danger"}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${stats.avgRiskScore}%` }}
                       transition={{ duration: 1, delay: 0.7 }}
@@ -130,10 +131,10 @@ export default function AnalyticsPage() {
                 <div className="h-2 rounded-full bg-muted/40 animate-pulse" />
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Review Status Breakdown */}
-          <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+          <Card className="block p-5">
             <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               Review Status
@@ -162,7 +163,7 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </AnimatedPage>

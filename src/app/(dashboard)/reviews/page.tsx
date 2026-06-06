@@ -42,17 +42,17 @@ function formatRelativeTime(date: string | Date): string {
 }
 
 function getRiskConfig(score: number) {
-  if (score <= 30) return { label: "Low", className: "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20" };
-  if (score <= 60) return { label: "Medium", className: "bg-amber-500/10 text-amber-500 ring-amber-500/20" };
-  return { label: "High", className: "bg-red-500/10 text-red-500 ring-red-500/20" };
+  if (score <= 30) return { label: "Low", className: "bg-success/10 text-success ring-success/20" };
+  if (score <= 60) return { label: "Medium", className: "bg-warning/10 text-warning ring-warning/20" };
+  return { label: "High", className: "bg-danger/10 text-danger ring-danger/20" };
 }
 
 function getStatusConfig(status: string): { icon: React.ReactNode; dot: "success" | "processing" | "warning" | "error" | "info"; label: string } {
   const configs: Record<string, { icon: React.ReactNode; dot: "success" | "processing" | "warning" | "error" | "info"; label: string }> = {
-    COMPLETED: { icon: <CheckCircle className="h-4 w-4 text-emerald-500" />, dot: "success", label: "Completed" },
-    PROCESSING: { icon: <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />, dot: "processing", label: "Processing" },
-    PENDING: { icon: <Clock className="h-4 w-4 text-amber-500" />, dot: "warning", label: "Pending" },
-    FAILED: { icon: <XCircle className="h-4 w-4 text-red-500" />, dot: "error", label: "Failed" },
+    COMPLETED: { icon: <CheckCircle className="h-4 w-4 text-success" />, dot: "success", label: "Completed" },
+    PROCESSING: { icon: <Loader2 className="h-4 w-4 text-info animate-spin" />, dot: "processing", label: "Processing" },
+    PENDING: { icon: <Clock className="h-4 w-4 text-warning" />, dot: "warning", label: "Pending" },
+    FAILED: { icon: <XCircle className="h-4 w-4 text-danger" />, dot: "error", label: "Failed" },
     CANCELLED: { icon: <Ban className="h-4 w-4 text-muted-foreground" />, dot: "info", label: "Cancelled" },
   };
   return configs[status] || configs.PENDING;
@@ -129,7 +129,7 @@ function ReviewCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 hover:bg-amber-500/10 hover:text-amber-500"
+              className="h-7 w-7 hover:bg-warning/10 hover:text-warning"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

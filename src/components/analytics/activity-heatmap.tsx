@@ -3,6 +3,7 @@
 import CalendarHeatmap from "react-calendar-heatmap";
 import "./activity-heatmap.css";
 import { ChartSkeleton } from "@/components/shimmer-skeleton";
+import { Card } from "@/components/ui/card";
 
 interface HeatmapValue {
   date: string;
@@ -27,9 +28,9 @@ function getHeatmapLevel(count: number): number {
 export function ActivityHeatmap({ data, isLoading }: ActivityHeatmapProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <ChartSkeleton />
-      </div>
+      </Card>
     );
   }
 
@@ -38,7 +39,7 @@ export function ActivityHeatmap({ data, isLoading }: ActivityHeatmapProps) {
   startDate.setFullYear(startDate.getFullYear() - 1);
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold">Review Activity</h3>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -69,6 +70,6 @@ export function ActivityHeatmap({ data, isLoading }: ActivityHeatmapProps) {
           gutterSize={3}
         />
       </div>
-    </div>
+    </Card>
   );
 }

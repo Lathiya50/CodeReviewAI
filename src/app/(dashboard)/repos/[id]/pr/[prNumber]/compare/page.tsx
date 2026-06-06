@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -143,8 +144,8 @@ export default function ReviewComparePage({
 
   const tabs = [
     { id: "all" as const, label: "All", count: comparison ? comparison.fixed.count + comparison.new.count + comparison.unchanged.count : 0 },
-    { id: "fixed" as const, label: "Fixed", icon: <CheckCircle className="h-3 w-3 text-emerald-500" />, count: comparison?.fixed.count },
-    { id: "new" as const, label: "New", icon: <AlertTriangle className="h-3 w-3 text-amber-500" />, count: comparison?.new.count },
+    { id: "fixed" as const, label: "Fixed", icon: <CheckCircle className="h-3 w-3 text-success" />, count: comparison?.fixed.count },
+    { id: "new" as const, label: "New", icon: <AlertTriangle className="h-3 w-3 text-warning" />, count: comparison?.new.count },
     { id: "unchanged" as const, label: "Unchanged", icon: <Minus className="h-3 w-3" />, count: comparison?.unchanged.count },
   ];
 
@@ -162,7 +163,7 @@ export default function ReviewComparePage({
       </div>
 
       {/* Header */}
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 mb-6">
+      <Card className="block p-6 mb-6">
         <h1 className="text-xl font-bold tracking-tight mb-4">
           Review Comparison
           <span className="text-muted-foreground font-normal ml-2">#{pr.number}</span>
@@ -205,10 +206,10 @@ export default function ReviewComparePage({
             </select>
           </div>
         </div>
-      </div>
+      </Card>
 
       {effectiveBaselineId === effectiveCurrentId && effectiveBaselineId && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-500 mb-6">
+        <div className="rounded-lg border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning mb-6">
           Please select two different reviews to compare.
         </div>
       )}
@@ -225,13 +226,13 @@ export default function ReviewComparePage({
             >
               <div className="flex items-center justify-center gap-1 mb-1">
                 {scoreDelta < 0 ? (
-                  <TrendingDown className="h-4 w-4 text-emerald-500" />
+                  <TrendingDown className="h-4 w-4 text-success" />
                 ) : scoreDelta > 0 ? (
-                  <TrendingUp className="h-4 w-4 text-red-500" />
+                  <TrendingUp className="h-4 w-4 text-danger" />
                 ) : (
                   <Minus className="h-4 w-4 text-muted-foreground" />
                 )}
-                <span className={`text-xl font-bold ${scoreDelta < 0 ? "text-emerald-500" : scoreDelta > 0 ? "text-red-500" : "text-muted-foreground"}`}>
+                <span className={`text-xl font-bold ${scoreDelta < 0 ? "text-success" : scoreDelta > 0 ? "text-danger" : "text-muted-foreground"}`}>
                   {scoreDelta > 0 ? "+" : ""}{scoreDelta}
                 </span>
               </div>
@@ -242,9 +243,9 @@ export default function ReviewComparePage({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center"
+              className="rounded-xl border border-success/20 bg-success/5 p-4 text-center"
             >
-              <span className="text-xl font-bold text-emerald-500">{comparison.fixed.count}</span>
+              <span className="text-xl font-bold text-success">{comparison.fixed.count}</span>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Fixed</p>
             </motion.div>
 
@@ -252,9 +253,9 @@ export default function ReviewComparePage({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center"
+              className="rounded-xl border border-warning/20 bg-warning/5 p-4 text-center"
             >
-              <span className="text-xl font-bold text-amber-500">{comparison.new.count}</span>
+              <span className="text-xl font-bold text-warning">{comparison.new.count}</span>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">New Issues</p>
             </motion.div>
 

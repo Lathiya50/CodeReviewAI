@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CircularGauge } from "@/components/ui/circular-gauge";
 import {
@@ -73,10 +74,10 @@ interface ReviewResultProps {
 
 function getSeverityStyles(severity: string) {
   const styles: Record<string, { bg: string; text: string; border: string; ring: string }> = {
-    critical: { bg: "bg-red-500/10", text: "text-red-500", border: "border-red-500/20", ring: "ring-red-500/20" },
-    high: { bg: "bg-orange-500/10", text: "text-orange-500", border: "border-orange-500/20", ring: "ring-orange-500/20" },
-    medium: { bg: "bg-amber-500/10", text: "text-amber-500", border: "border-amber-500/20", ring: "ring-amber-500/20" },
-    low: { bg: "bg-blue-500/10", text: "text-blue-500", border: "border-blue-500/20", ring: "ring-blue-500/20" },
+    critical: { bg: "bg-danger/15", text: "text-danger", border: "border-danger/30", ring: "ring-danger/30" },
+    high: { bg: "bg-danger/10", text: "text-danger", border: "border-danger/20", ring: "ring-danger/20" },
+    medium: { bg: "bg-warning/10", text: "text-warning", border: "border-warning/20", ring: "ring-warning/20" },
+    low: { bg: "bg-info/10", text: "text-info", border: "border-info/20", ring: "ring-info/20" },
   };
   return styles[severity] || styles.low;
 }
@@ -158,7 +159,7 @@ function CommentCard({
               <FileCode className="h-3 w-3" />
               {comment.file}:{comment.line}
               {copied ? (
-                <Check className="h-3 w-3 text-emerald-500" />
+                <Check className="h-3 w-3 text-success" />
               ) : (
                 <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100" />
               )}
@@ -232,10 +233,10 @@ function SeverityBar({ comments }: { comments: ReviewComment[] }) {
   if (total === 0) return null;
 
   const items = [
-    { key: "critical", label: "Critical", count: counts.critical, color: "bg-red-500" },
-    { key: "high", label: "High", count: counts.high, color: "bg-orange-500" },
-    { key: "medium", label: "Medium", count: counts.medium, color: "bg-amber-500" },
-    { key: "low", label: "Low", count: counts.low, color: "bg-blue-500" },
+    { key: "critical", label: "Critical", count: counts.critical, color: "bg-danger" },
+    { key: "high", label: "High", count: counts.high, color: "bg-danger/60" },
+    { key: "medium", label: "Medium", count: counts.medium, color: "bg-warning" },
+    { key: "low", label: "Low", count: counts.low, color: "bg-info" },
   ];
 
   return (
@@ -400,7 +401,7 @@ export function ReviewResult({ review }: ReviewResultProps) {
       {/* Risk Score + Severity Overview */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Risk Score */}
-        <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 flex items-center gap-6">
+        <Card className="flex-row items-center gap-6 p-6">
           <CircularGauge
             value={review.riskScore ?? 0}
             size={100}
@@ -417,24 +418,24 @@ export function ReviewResult({ review }: ReviewResultProps) {
                   : "High risk. Critical issues found."}
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Severity Breakdown */}
-        <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6">
+        <Card className="block p-6">
           <h3 className="text-sm font-semibold mb-3">Severity Breakdown</h3>
           <SeverityBar comments={comments} />
           {comments.length === 0 && (
-            <div className="flex items-center gap-2 text-sm text-emerald-500">
+            <div className="flex items-center gap-2 text-sm text-success">
               <CheckCircle className="h-4 w-4" />
               No issues found
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* AI Summary */}
       {review.summary && (
-        <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+        <Card className="block p-5">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold">AI Summary</h3>
@@ -442,7 +443,7 @@ export function ReviewResult({ review }: ReviewResultProps) {
           <p className="text-sm text-muted-foreground leading-relaxed">
             {review.summary}
           </p>
-        </div>
+        </Card>
       )}
 
       {/* Comments */}
@@ -461,10 +462,10 @@ export function ReviewResult({ review }: ReviewResultProps) {
                 <Filter className="h-3.5 w-3.5 text-muted-foreground" />
                 {(["critical", "high", "medium", "low"] as const).map((sev) => {
                   const colors = {
-                    critical: "bg-red-500",
-                    high: "bg-orange-500",
-                    medium: "bg-amber-500",
-                    low: "bg-blue-500",
+                    critical: "bg-danger",
+                    high: "bg-danger/60",
+                    medium: "bg-warning",
+                    low: "bg-info",
                   };
                   const count = comments.filter((c) => c.severity === sev).length;
                   if (count === 0) return null;

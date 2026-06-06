@@ -76,8 +76,8 @@ function CodeBlock({
         >
           {copied ? (
             <>
-              <Check className="h-3 w-3 text-emerald-500" />
-              <span className="text-emerald-500">Copied</span>
+              <Check className="h-3 w-3 text-success" />
+              <span className="text-success">Copied</span>
             </>
           ) : (
             <>
@@ -95,7 +95,7 @@ function CodeBlock({
             {lines.map((line, i) => (
               <tr key={i} className="hover:bg-muted/20 transition-colors">
                 {showLineNumbers && (
-                  <td className="w-10 select-none text-right px-2 py-0.5 text-muted-foreground/40 border-r border-border/20 sticky left-0 bg-inherit">
+                  <td className="w-10 select-none text-right px-2 py-0.5 text-muted-foreground border-r border-border/40 sticky left-0 bg-inherit">
                     {lineStart + i}
                   </td>
                 )}
@@ -140,9 +140,9 @@ export function CodeComparison({
           code={oldCode}
           title="Before"
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
-          iconColor="text-red-500"
-          bgColor="bg-red-500/5"
-          borderColor="border-red-500/20"
+          iconColor="text-danger"
+          bgColor="bg-danger/5"
+          borderColor="border-danger/20"
           language={language}
           lineStart={lineStart}
           showLineNumbers={showLineNumbers}
@@ -152,9 +152,9 @@ export function CodeComparison({
           code={newCode}
           title="After"
           icon={<CheckCircle className="h-3.5 w-3.5" />}
-          iconColor="text-emerald-500"
-          bgColor="bg-emerald-500/5"
-          borderColor="border-emerald-500/20"
+          iconColor="text-success"
+          bgColor="bg-success/5"
+          borderColor="border-success/20"
           language={language}
           lineStart={lineStart}
           showLineNumbers={showLineNumbers}
@@ -168,9 +168,9 @@ export function CodeComparison({
           code={oldCode}
           title="Before"
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
-          iconColor="text-red-500"
-          bgColor="bg-red-500/5"
-          borderColor="border-red-500/20"
+          iconColor="text-danger"
+          bgColor="bg-danger/5"
+          borderColor="border-danger/20"
           language={language}
           lineStart={lineStart}
           showLineNumbers={showLineNumbers}
@@ -180,9 +180,9 @@ export function CodeComparison({
           code={newCode}
           title="After"
           icon={<CheckCircle className="h-3.5 w-3.5" />}
-          iconColor="text-emerald-500"
-          bgColor="bg-emerald-500/5"
-          borderColor="border-emerald-500/20"
+          iconColor="text-success"
+          bgColor="bg-success/5"
+          borderColor="border-success/20"
           language={language}
           lineStart={lineStart}
           showLineNumbers={showLineNumbers}

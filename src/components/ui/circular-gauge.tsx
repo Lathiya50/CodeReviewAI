@@ -13,15 +13,15 @@ interface CircularGaugeProps {
 }
 
 function getGaugeColor(value: number): string {
-  if (value <= 30) return "stroke-emerald-500";
-  if (value <= 60) return "stroke-amber-500";
-  return "stroke-red-500";
+  if (value <= 30) return "stroke-success";
+  if (value <= 60) return "stroke-warning";
+  return "stroke-danger";
 }
 
 function getGaugeBg(value: number): string {
-  if (value <= 30) return "text-emerald-500";
-  if (value <= 60) return "text-amber-500";
-  return "text-red-500";
+  if (value <= 30) return "text-success";
+  if (value <= 60) return "text-warning";
+  return "text-danger";
 }
 
 export function CircularGauge({

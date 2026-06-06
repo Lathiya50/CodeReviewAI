@@ -31,23 +31,23 @@
 .heatmap-legend-3 { background: oklch(0.55 0.22 280); }
 .heatmap-legend-4 { background: oklch(0.67 0.23 280); }
 
-/* Light mode overrides */
-:root .heatmap-day-0 { fill: oklch(0.92 0.005 265); }
-:root .heatmap-day-1 { fill: oklch(0.82 0.1 280); }
-:root .heatmap-day-2 { fill: oklch(0.72 0.15 280); }
-:root .heatmap-day-3 { fill: oklch(0.6 0.2 280); }
-:root .heatmap-day-4 { fill: oklch(0.5 0.22 280); }
+/* Light mode overrides (scoped so they don't leak into dark mode) */
+:root:not(.dark) .heatmap-day-0 { fill: oklch(0.92 0.005 265); }
+:root:not(.dark) .heatmap-day-1 { fill: oklch(0.82 0.1 280); }
+:root:not(.dark) .heatmap-day-2 { fill: oklch(0.72 0.15 280); }
+:root:not(.dark) .heatmap-day-3 { fill: oklch(0.6 0.2 280); }
+:root:not(.dark) .heatmap-day-4 { fill: oklch(0.5 0.22 280); }
 
-:root .heatmap-legend-0 { background: oklch(0.92 0.005 265); }
-:root .heatmap-legend-1 { background: oklch(0.82 0.1 280); }
-:root .heatmap-legend-2 { background: oklch(0.72 0.15 280); }
-:root .heatmap-legend-3 { background: oklch(0.6 0.2 280); }
-:root .heatmap-legend-4 { background: oklch(0.5 0.22 280); }
+:root:not(.dark) .heatmap-legend-0 { background: oklch(0.92 0.005 265); }
+:root:not(.dark) .heatmap-legend-1 { background: oklch(0.82 0.1 280); }
+:root:not(.dark) .heatmap-legend-2 { background: oklch(0.72 0.15 280); }
+:root:not(.dark) .heatmap-legend-3 { background: oklch(0.6 0.2 280); }
+:root:not(.dark) .heatmap-legend-4 { background: oklch(0.5 0.22 280); }
 
-:root .heatmap-container text {
+:root:not(.dark) .heatmap-container text {
   fill: oklch(0.5 0.02 265);
 }
 
-:root .heatmap-container rect:hover {
+:root:not(.dark) .heatmap-container rect:hover {
   stroke: oklch(0.5 0.22 280);
 }

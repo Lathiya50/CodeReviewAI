@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -28,10 +29,10 @@ function ReviewStatusBadge({ status }: { status: string | null }) {
   if (!status) return null;
 
   const configs: Record<string, { dot: "success" | "processing" | "warning" | "error" | "info"; label: string; className: string }> = {
-    COMPLETED: { dot: "success", label: "Reviewed", className: "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20" },
-    PROCESSING: { dot: "processing", label: "Processing", className: "bg-blue-500/10 text-blue-500 ring-blue-500/20" },
-    PENDING: { dot: "warning", label: "Pending", className: "bg-amber-500/10 text-amber-500 ring-amber-500/20" },
-    FAILED: { dot: "error", label: "Failed", className: "bg-red-500/10 text-red-500 ring-red-500/20" },
+    COMPLETED: { dot: "success", label: "Reviewed", className: "bg-success/10 text-success ring-success/20" },
+    PROCESSING: { dot: "processing", label: "Processing", className: "bg-info/10 text-info ring-info/20" },
+    PENDING: { dot: "warning", label: "Pending", className: "bg-warning/10 text-warning ring-warning/20" },
+    FAILED: { dot: "error", label: "Failed", className: "bg-danger/10 text-danger ring-danger/20" },
     CANCELLED: { dot: "info", label: "Cancelled", className: "bg-muted text-muted-foreground ring-border" },
   };
 
@@ -47,9 +48,9 @@ function ReviewStatusBadge({ status }: { status: string | null }) {
 }
 
 function PRIcon({ state, mergedAt }: { state: string; mergedAt: string | null }) {
-  if (mergedAt !== null) return <GitMerge className="h-4 w-4 text-purple-500" />;
-  if (state === "open") return <CircleDot className="h-4 w-4 text-emerald-500" />;
-  return <GitPullRequest className="h-4 w-4 text-red-500" />;
+  if (mergedAt !== null) return <GitMerge className="h-4 w-4 text-primary" />;
+  if (state === "open") return <CircleDot className="h-4 w-4 text-success" />;
+  return <GitPullRequest className="h-4 w-4 text-danger" />;
 }
 
 function PullRequestCard({
@@ -111,8 +112,8 @@ function PullRequestCard({
               {pr.headRef}
             </span>
             <span className="hidden sm:flex items-center gap-2">
-              <span className="text-emerald-500">+{pr.additions}</span>
-              <span className="text-red-500">-{pr.deletions}</span>
+              <span className="text-success">+{pr.additions}</span>
+              <span className="text-danger">-{pr.deletions}</span>
               <span className="flex items-center gap-0.5">
                 <FileCode className="h-3 w-3" />
                 {pr.changedFiles}
@@ -203,7 +204,7 @@ export default function RepositoryDetailPage({
       </div>
 
       {/* Repo header */}
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 mb-6">
+      <Card className="block p-6 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
@@ -225,7 +226,7 @@ export default function RepositoryDetailPage({
             </a>
           </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Tabs + PR List */}
       <div className="flex items-center justify-between mb-4">

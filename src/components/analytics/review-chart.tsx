@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ChartSkeleton } from "@/components/shimmer-skeleton";
+import { Card } from "@/components/ui/card";
 
 interface ReviewChartProps {
   data: { date: string; reviews: number }[] | undefined;
@@ -31,14 +32,14 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewChartProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <ChartSkeleton />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold">Review Trend</h3>
         <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5">
@@ -83,6 +84,6 @@ export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewCha
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

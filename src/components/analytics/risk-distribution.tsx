@@ -2,6 +2,7 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { ChartSkeleton } from "@/components/shimmer-skeleton";
+import { Card } from "@/components/ui/card";
 
 interface RiskItem {
   range: string;
@@ -17,9 +18,9 @@ interface RiskDistributionProps {
 export function RiskDistribution({ data, isLoading }: RiskDistributionProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <ChartSkeleton />
-      </div>
+      </Card>
     );
   }
 
@@ -30,7 +31,7 @@ export function RiskDistribution({ data, isLoading }: RiskDistributionProps) {
   const total = chartData.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <h3 className="text-sm font-semibold mb-4">Risk Distribution</h3>
 
       {total === 0 ? (
@@ -80,6 +81,6 @@ export function RiskDistribution({ data, isLoading }: RiskDistributionProps) {
           </div>
         </>
       )}
-    </div>
+    </Card>
   );
 }

@@ -32,10 +32,10 @@ interface DiffViewerProps {
 
 function getStatusConfig(status: string) {
   const configs: Record<string, { icon: typeof FileCode; color: string; label: string }> = {
-    added: { icon: FilePlus, color: "text-emerald-500", label: "Added" },
-    removed: { icon: FileX, color: "text-red-500", label: "Removed" },
-    modified: { icon: FilePen, color: "text-amber-500", label: "Modified" },
-    renamed: { icon: FilePen, color: "text-blue-500", label: "Renamed" },
+    added: { icon: FilePlus, color: "text-success", label: "Added" },
+    removed: { icon: FileX, color: "text-danger", label: "Removed" },
+    modified: { icon: FilePen, color: "text-warning", label: "Modified" },
+    renamed: { icon: FilePen, color: "text-info", label: "Renamed" },
   };
   return configs[status] || configs.modified;
 }
@@ -50,10 +50,10 @@ function ChangeBar({ additions, deletions }: { additions: number; deletions: num
   return (
     <span className="flex items-center gap-px">
       {Array.from({ length: addBlocks }).map((_, i) => (
-        <span key={`a${i}`} className="h-2 w-2 rounded-sm bg-emerald-500" />
+        <span key={`a${i}`} className="h-2 w-2 rounded-sm bg-success" />
       ))}
       {Array.from({ length: delBlocks }).map((_, i) => (
-        <span key={`d${i}`} className="h-2 w-2 rounded-sm bg-red-500" />
+        <span key={`d${i}`} className="h-2 w-2 rounded-sm bg-danger" />
       ))}
     </span>
   );
@@ -112,22 +112,22 @@ function DiffContent({ patch }: { patch: string }) {
               <tr
                 key={i}
                 className={cn(
-                  "group hover:brightness-110 transition-all",
-                  type === "add" && "bg-emerald-500/8",
-                  type === "del" && "bg-red-500/8"
+                  "group hover:bg-muted/40 transition-colors",
+                  type === "add" && "bg-success/10",
+                  type === "del" && "bg-danger/10"
                 )}
               >
-                <td className="w-10 select-none text-right px-2 py-0 text-muted-foreground/40 border-r border-border/20">
+                <td className="w-10 select-none text-right px-2 py-0 text-muted-foreground border-r border-border/40">
                   {displayOld}
                 </td>
-                <td className="w-10 select-none text-right px-2 py-0 text-muted-foreground/40 border-r border-border/20">
+                <td className="w-10 select-none text-right px-2 py-0 text-muted-foreground border-r border-border/40">
                   {displayNew}
                 </td>
                 <td className="px-3 py-0 whitespace-pre">
                   <span className={cn(
                     "inline-block w-4 select-none",
-                    type === "add" && "text-emerald-500",
-                    type === "del" && "text-red-500"
+                    type === "add" && "text-success",
+                    type === "del" && "text-danger"
                   )}>
                     {type === "add" ? "+" : type === "del" ? "-" : " "}
                   </span>
@@ -189,8 +189,8 @@ function DiffFileCard({
         </div>
 
         <div className="flex items-center gap-3 shrink-0 text-xs">
-          <span className="text-emerald-500">+{file.additions}</span>
-          <span className="text-red-500">-{file.deletions}</span>
+          <span className="text-success">+{file.additions}</span>
+          <span className="text-danger">-{file.deletions}</span>
           <ChangeBar additions={file.additions} deletions={file.deletions} />
         </div>
 
@@ -199,7 +199,7 @@ function DiffFileCard({
           className="shrink-0 p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
         >
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-emerald-500" />
+            <Check className="h-3.5 w-3.5 text-success" />
           ) : (
             <Copy className="h-3.5 w-3.5" />
           )}
@@ -250,8 +250,8 @@ export function DiffViewer({ files }: DiffViewerProps) {
             <FileCode className="h-4 w-4" />
             {files.length} files
           </span>
-          <span className="text-emerald-500">+{totalAdditions}</span>
-          <span className="text-red-500">-{totalDeletions}</span>
+          <span className="text-success">+{totalAdditions}</span>
+          <span className="text-danger">-{totalDeletions}</span>
         </div>
         <div className="flex items-center gap-1">
           <Button

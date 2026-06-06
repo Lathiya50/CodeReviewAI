@@ -227,7 +227,7 @@ function SignInForm() {
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/15 px-3 py-2.5 text-sm text-red-200"
+                    className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger"
                   >
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>{error}</span>
@@ -255,7 +255,7 @@ function SignInForm() {
 
               <div className="mt-6 rounded-xl border border-border/60 bg-background/65 p-3 text-xs text-muted-foreground">
                 <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                   You can connect repositories and run your first review in under 2 minutes.
                 </p>
               </div>

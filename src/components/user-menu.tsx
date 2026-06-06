@@ -43,7 +43,7 @@ export function UserMenu({ user }: { user: User }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-white/5 transition-colors outline-none">
+        <button className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-muted/60 transition-colors outline-none">
           <Avatar className="h-7 w-7 ring-1 ring-border/50">
             <AvatarImage src={user.image ?? undefined} alt={user.name} />
             <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">

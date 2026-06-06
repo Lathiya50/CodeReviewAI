@@ -24,10 +24,10 @@ import { SuggestionDiffViewer } from "@/components/suggestion-diff-viewer";
 
 function getSeverityStyles(severity: string) {
   const styles: Record<string, string> = {
-    critical: "bg-red-500/10 text-red-500 ring-red-500/20",
-    high: "bg-orange-500/10 text-orange-500 ring-orange-500/20",
-    medium: "bg-amber-500/10 text-amber-500 ring-amber-500/20",
-    low: "bg-blue-500/10 text-blue-500 ring-blue-500/20",
+    critical: "bg-danger/15 text-danger ring-danger/30",
+    high: "bg-danger/10 text-danger ring-danger/20",
+    medium: "bg-warning/10 text-warning ring-warning/20",
+    low: "bg-info/10 text-info ring-info/20",
   };
   return styles[severity] || styles.low;
 }
@@ -46,18 +46,18 @@ function getCategoryIcon(category: string) {
 function getVariantConfig(variant: "fixed" | "new" | "unchanged") {
   const configs = {
     fixed: {
-      icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />,
+      icon: <CheckCircle className="h-3.5 w-3.5 text-success" />,
       label: "Fixed",
-      border: "border-emerald-500/20",
-      bg: "bg-emerald-500/5",
-      badge: "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20",
+      border: "border-success/20",
+      bg: "bg-success/5",
+      badge: "bg-success/10 text-success ring-success/20",
     },
     new: {
-      icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />,
+      icon: <AlertTriangle className="h-3.5 w-3.5 text-warning" />,
       label: "New Issue",
-      border: "border-amber-500/20",
-      bg: "bg-amber-500/5",
-      badge: "bg-amber-500/10 text-amber-500 ring-amber-500/20",
+      border: "border-warning/20",
+      bg: "bg-warning/5",
+      badge: "bg-warning/10 text-warning ring-warning/20",
     },
     unchanged: {
       icon: <Minus className="h-3.5 w-3.5 text-muted-foreground" />,
@@ -117,7 +117,7 @@ export function ComparisonCommentCard({
           <FileCode className="h-3 w-3" />
           {comment.file}:{comment.line}
           {copied ? (
-            <Check className="h-3 w-3 text-emerald-500" />
+            <Check className="h-3 w-3 text-success" />
           ) : (
             <Copy className="h-3 w-3 opacity-50 hover:opacity-100" />
           )}
