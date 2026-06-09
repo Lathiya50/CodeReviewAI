@@ -304,6 +304,10 @@ export default function PullRequestDetailPage({
           review ? (
             <ReviewResult
               review={review}
+              onRetry={() =>
+                triggerMutation.mutate({ repositoryId: id, prNumber: prNumberInt })
+              }
+              isRetrying={triggerMutation.isPending}
             />
           ) : (
             <EmptyState

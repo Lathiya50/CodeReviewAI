@@ -39,6 +39,7 @@ import {
   Info,
   Code2,
   Filter,
+  RotateCcw,
 } from "lucide-react";
 import { SuggestionDiffViewer } from "@/components/suggestion-diff-viewer";
 import type { CodeSuggestion } from "@/lib/review-comparison";
@@ -65,11 +66,16 @@ interface Review {
   riskScore: number | null;
   summary: string | null;
   comments: unknown;
+  error?: string | null;
   createdAt: string | Date;
 }
 
 interface ReviewResultProps {
   review: Review;
+  // Optional re-run handler — when provided, a "Re-run review" button is shown
+  // on the FAILED state.
+  onRetry?: () => void;
+  isRetrying?: boolean;
 }
 
 function getSeverityStyles(severity: string) {
@@ -270,7 +276,7 @@ function SeverityBar({ comments }: { comments: ReviewComment[] }) {
   );
 }
 
-export function ReviewResult({ review }: ReviewResultProps) {
+export function ReviewResult({ review, onRetry, isRetrying }: ReviewResultProps) {
   const [selectedComments, setSelectedComments] = useState<Set<number>>(new Set());
   const [eventType, setEventType] = useState<"COMMENT" | "REQUEST_CHANGES">("COMMENT");
   const [showPostDialog, setShowPostDialog] = useState(false);
@@ -374,9 +380,28 @@ export function ReviewResult({ review }: ReviewResultProps) {
           <XCircle className="h-6 w-6 text-destructive" />
         </div>
         <h3 className="text-base font-semibold">Review failed</h3>
-        <p className="mt-1.5 text-sm text-muted-foreground">
+        <p className="mt-1.5 text-sm text-muted-foreground max-w-lg">
           Something went wrong during the review. Try running it again.
         </p>
+        {review.error?.trim() && (
+          <pre className="mt-3 max-w-lg overflow-x-auto rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-left text-xs text-destructive/90 whitespace-pre-wrap">
+            {review.error}
+          </pre>
+        )}
+        {onRetry && (
+          <Button
+            onClick={onRetry}
+            disabled={isRetrying}
+            className="mt-5 gap-2"
+          >
+            {isRetrying ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            Re-run review
+          </Button>
+        )}
       </div>
     );
   }

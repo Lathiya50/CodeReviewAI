@@ -26,9 +26,38 @@ model User {
 
   repositories Repository[]
   reviews      Review[]
+  aiSettings   UserAiSettings?
 
   @@unique([email])
   @@map("user")
+}
+
+model UserAiSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider AiProvider @default(GROQ) // GROQ | OPENAI | ANTHROPIC
+  model    String? // selected model id; null => provider default
+
+  // ── Encrypted API key (AES-256-GCM). Plaintext NEVER stored or returned. ──
+  apiKeyCiphertext String?     @db.Text // base64(iv):base64(authTag):base64(ciphertext)
+  apiKeyLast4      String? // last 4 chars, for masked display only
+  apiKeyProvider   AiProvider? // which provider the saved key belongs to
+
+  customInstructions String? @db.Text // appended to the system prompt (length-capped in app)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_ai_settings")
+}
+
+enum AiProvider {
+  GROQ
+  OPENAI
+  ANTHROPIC
+  GEMINI
 }
 
 model Session {

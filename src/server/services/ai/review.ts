@@ -1,7 +1,10 @@
-import type { ProviderName } from "@/constant/ai";
-import { getProvider, getProviderConfig } from "./registry";
-import type { FileChange, ReviewResult } from "./types";
+import { DEFAULT_PROVIDER } from "@/constant/ai";
+import { getProviderConfig, instantiateProvider } from "./registry";
+import type { FileChange, ResolvedAiConfig, ReviewResult } from "./types";
 import { ReviewResultSchema } from "./types";
+
+// Max characters of user-provided custom instructions injected into the prompt.
+const MAX_CUSTOM_INSTRUCTIONS_CHARS = 4_000;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -59,6 +62,26 @@ Code extraction rules:
 - Only include oldCode/newCode when you have a concrete code fix to suggest
 
 Respond ONLY with the JSON object, no markdown fences or extra text.`;
+
+// Builds the system prompt, optionally injecting user-provided custom
+// instructions inside a clearly delimited block. The JSON-output contract is
+// restated last so house rules can never override the structured-output format.
+function buildSystemPrompt(customInstructions?: string): string {
+  const trimmed = customInstructions?.trim();
+  if (!trimmed) return SYSTEM_PROMPT;
+
+  const capped = trimmed.slice(0, MAX_CUSTOM_INSTRUCTIONS_CHARS);
+
+  return `${SYSTEM_PROMPT}
+
+## Additional reviewer instructions (user-provided)
+The following are house rules from the user. Apply them where they do not conflict with the JSON output contract above.
+<instructions>
+${capped}
+</instructions>
+
+Reminder: Respond ONLY with the JSON object described above — no markdown fences or extra text.`;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -147,7 +170,7 @@ function sleep(ms: number): Promise<void> {
 async function reviewSingleChunk(
   prTitle: string,
   files: FileChange[],
-  providerName?: ProviderName,
+  config: ResolvedAiConfig,
 ): Promise<ReviewResult> {
   const userPrompt = buildUserPrompt(prTitle, files);
 
@@ -159,9 +182,16 @@ async function reviewSingleChunk(
     };
   }
 
-  const provider = getProvider(providerName);
-  const config = getProviderConfig(providerName ?? provider.name as ProviderName);
-  const modelsToTry = [config.models.primaryModel, config.models.fallbackModel];
+  const provider = instantiateProvider(config.provider, config.apiKey);
+  const providerConfig = getProviderConfig(config.provider);
+  const systemPrompt = buildSystemPrompt(config.customInstructions);
+
+  // Primary = user-selected model (if any) else the provider default. Fallback
+  // stays the provider's configured fallback. Dedupe so we don't retry the same model.
+  const primaryModel = config.model ?? providerConfig.models.primaryModel;
+  const modelsToTry = Array.from(
+    new Set([primaryModel, providerConfig.models.fallbackModel]),
+  );
 
   let lastError: Error | null = null;
 
@@ -175,7 +205,7 @@ async function reviewSingleChunk(
         const response = await provider.chat({
           model,
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
           temperature: 0.3,
@@ -192,7 +222,8 @@ async function reviewSingleChunk(
         if (
           (status === 429 || status === 413) &&
           attempt === 0 &&
-          model === config.models.primaryModel
+          model === primaryModel &&
+          modelsToTry.length > 1
         ) {
           console.warn(
             `[AI Review] Primary model hit ${status}. Switching to fallback model...`,
@@ -221,11 +252,13 @@ async function reviewSingleChunk(
 }
 
 // Reviews PR code via AI provider. Chunks large diffs to avoid payload limits. Tries primary model then fallback; up to MAX_RETRIES with backoff. Validates JSON. Throws after retries exhausted.
+// `config` carries the resolved provider/model/key/instructions for this user (defaults to the app's default provider).
 export async function reviewCode(
   prTitle: string,
   files: FileChange[],
-  providerName?: ProviderName,
+  config?: ResolvedAiConfig,
 ): Promise<ReviewResult> {
+  const resolved: ResolvedAiConfig = config ?? { provider: DEFAULT_PROVIDER };
   const chunks = chunkFiles(files);
 
   if (chunks.length > 1) {
@@ -239,7 +272,7 @@ export async function reviewCode(
     console.log(
       `[AI Review] Reviewing chunk ${i + 1}/${chunks.length} (${chunks[i].length} files)`,
     );
-    results.push(await reviewSingleChunk(prTitle, chunks[i], providerName));
+    results.push(await reviewSingleChunk(prTitle, chunks[i], resolved));
   }
 
   return mergeResults(results);
