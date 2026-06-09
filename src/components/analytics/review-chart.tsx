@@ -61,18 +61,18 @@ export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewCha
             <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.67 0.23 280)" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="oklch(0.67 0.23 280)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="oklch(0.62 0.19 272)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="oklch(0.62 0.19 272)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.02 268 / 30%)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.012 262 / 30%)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.015 262)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.5 0.015 262)" allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
               <Area
                 type="monotone"
                 dataKey="reviews"
-                stroke="oklch(0.67 0.23 280)"
+                stroke="oklch(0.62 0.19 272)"
                 strokeWidth={2}
                 fill="url(#chartGradient)"
               />

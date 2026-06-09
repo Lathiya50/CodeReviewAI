@@ -7,47 +7,47 @@
 }
 
 .heatmap-container text {
-  fill: oklch(0.5 0.02 268);
+  fill: oklch(0.5 0.015 262);
   font-size: 10px;
 }
 
 /* Day squares */
-.heatmap-day-0 { fill: oklch(0.18 0.01 268); rx: 2; }
-.heatmap-day-1 { fill: oklch(0.35 0.12 280); rx: 2; }
-.heatmap-day-2 { fill: oklch(0.45 0.17 280); rx: 2; }
-.heatmap-day-3 { fill: oklch(0.55 0.22 280); rx: 2; }
-.heatmap-day-4 { fill: oklch(0.67 0.23 280); rx: 2; }
+.heatmap-day-0 { fill: oklch(0.18 0.01 262); rx: 2; }
+.heatmap-day-1 { fill: oklch(0.33 0.09 272); rx: 2; }
+.heatmap-day-2 { fill: oklch(0.43 0.13 272); rx: 2; }
+.heatmap-day-3 { fill: oklch(0.53 0.17 272); rx: 2; }
+.heatmap-day-4 { fill: oklch(0.62 0.19 272); rx: 2; }
 
 /* Hover effect */
 .heatmap-container rect:hover {
-  stroke: oklch(0.67 0.23 280);
+  stroke: oklch(0.62 0.19 272);
   stroke-width: 1.5;
 }
 
 /* Legend swatches */
-.heatmap-legend-0 { background: oklch(0.18 0.01 268); }
-.heatmap-legend-1 { background: oklch(0.35 0.12 280); }
-.heatmap-legend-2 { background: oklch(0.45 0.17 280); }
-.heatmap-legend-3 { background: oklch(0.55 0.22 280); }
-.heatmap-legend-4 { background: oklch(0.67 0.23 280); }
+.heatmap-legend-0 { background: oklch(0.18 0.01 262); }
+.heatmap-legend-1 { background: oklch(0.33 0.09 272); }
+.heatmap-legend-2 { background: oklch(0.43 0.13 272); }
+.heatmap-legend-3 { background: oklch(0.53 0.17 272); }
+.heatmap-legend-4 { background: oklch(0.62 0.19 272); }
 
 /* Light mode overrides (scoped so they don't leak into dark mode) */
-:root:not(.dark) .heatmap-day-0 { fill: oklch(0.92 0.005 265); }
-:root:not(.dark) .heatmap-day-1 { fill: oklch(0.82 0.1 280); }
-:root:not(.dark) .heatmap-day-2 { fill: oklch(0.72 0.15 280); }
-:root:not(.dark) .heatmap-day-3 { fill: oklch(0.6 0.2 280); }
-:root:not(.dark) .heatmap-day-4 { fill: oklch(0.5 0.22 280); }
+:root:not(.dark) .heatmap-day-0 { fill: oklch(0.93 0.005 262); }
+:root:not(.dark) .heatmap-day-1 { fill: oklch(0.82 0.07 272); }
+:root:not(.dark) .heatmap-day-2 { fill: oklch(0.71 0.11 272); }
+:root:not(.dark) .heatmap-day-3 { fill: oklch(0.6 0.14 272); }
+:root:not(.dark) .heatmap-day-4 { fill: oklch(0.52 0.17 272); }
 
-:root:not(.dark) .heatmap-legend-0 { background: oklch(0.92 0.005 265); }
-:root:not(.dark) .heatmap-legend-1 { background: oklch(0.82 0.1 280); }
-:root:not(.dark) .heatmap-legend-2 { background: oklch(0.72 0.15 280); }
-:root:not(.dark) .heatmap-legend-3 { background: oklch(0.6 0.2 280); }
-:root:not(.dark) .heatmap-legend-4 { background: oklch(0.5 0.22 280); }
+:root:not(.dark) .heatmap-legend-0 { background: oklch(0.93 0.005 262); }
+:root:not(.dark) .heatmap-legend-1 { background: oklch(0.82 0.07 272); }
+:root:not(.dark) .heatmap-legend-2 { background: oklch(0.71 0.11 272); }
+:root:not(.dark) .heatmap-legend-3 { background: oklch(0.6 0.14 272); }
+:root:not(.dark) .heatmap-legend-4 { background: oklch(0.52 0.17 272); }
 
 :root:not(.dark) .heatmap-container text {
-  fill: oklch(0.5 0.02 265);
+  fill: oklch(0.5 0.015 262);
 }
 
 :root:not(.dark) .heatmap-container rect:hover {
-  stroke: oklch(0.5 0.22 280);
+  stroke: oklch(0.52 0.17 272);
 }

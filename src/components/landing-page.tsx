@@ -254,8 +254,8 @@ export function LandingPage() {
           <div className="absolute inset-0 bg-grid opacity-100" />
 
           {/* Radial fade overlay */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,oklch(0.67_0.23_280/18%),transparent)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_80%,oklch(0.72_0.19_200/10%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,oklch(0.62_0.19_272/18%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_80%,oklch(0.74_0.13_195/10%),transparent)]" />
 
           {/* Floating orbs */}
           <Orb
@@ -484,7 +484,7 @@ export function LandingPage() {
 
         {/* ─── Features ─────────────────────────────────────────────────── */}
         <section id="features" className="relative py-28">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,oklch(0.67_0.23_280/6%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,oklch(0.62_0.19_272/6%),transparent)]" />
 
           <div className="relative mx-auto max-w-6xl px-6">
             <RevealSection className="text-center mb-16">
@@ -545,7 +545,7 @@ export function LandingPage() {
           className="relative py-28 border-t border-border"
         >
           <div className="absolute inset-0 bg-grid opacity-40" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_100%,oklch(0.72_0.19_200/8%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_100%,oklch(0.74_0.13_195/8%),transparent)]" />
 
           <div className="relative mx-auto max-w-6xl px-6">
             <RevealSection className="text-center mb-16">
@@ -598,7 +598,7 @@ export function LandingPage() {
 
         {/* ─── CTA Banner ───────────────────────────────────────────────── */}
         <section className="relative py-28 border-t border-border overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_80%_at_50%_50%,oklch(0.67_0.23_280/12%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_80%_at_50%_50%,oklch(0.62_0.19_272/12%),transparent)]" />
           <Orb
             className="left-[10%] top-[20%] w-96 h-96 bg-primary/8 blur-3xl"
             delay={0}

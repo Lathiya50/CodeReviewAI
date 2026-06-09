@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -281,6 +281,17 @@ export function ReviewResult({ review, onRetry, isRetrying }: ReviewResultProps)
   const [eventType, setEventType] = useState<"COMMENT" | "REQUEST_CHANGES">("COMMENT");
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [severityFilter, setSeverityFilter] = useState<Set<string>>(new Set(["critical", "high", "medium", "low"]));
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [summaryOverflows, setSummaryOverflows] = useState(false);
+  const summaryRef = useRef<HTMLParagraphElement>(null);
+
+  // Detect whether the summary is taller than 3 clamped lines (only measured while collapsed)
+  useEffect(() => {
+    const el = summaryRef.current;
+    if (el && !summaryExpanded) {
+      setSummaryOverflows(el.scrollHeight > el.clientHeight + 1);
+    }
+  }, [review.summary, summaryExpanded]);
 
   const postMutation = trpc.review.postToGithub.useMutation({
     onSuccess: (data) => {
@@ -465,9 +476,21 @@ export function ReviewResult({ review, onRetry, isRetrying }: ReviewResultProps)
             <Sparkles className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold">AI Summary</h3>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <p
+            ref={summaryRef}
+            className={`text-sm text-muted-foreground leading-relaxed ${summaryExpanded ? "" : "line-clamp-3"}`}
+          >
             {review.summary}
           </p>
+          {(summaryOverflows || summaryExpanded) && (
+            <button
+              type="button"
+              onClick={() => setSummaryExpanded((v) => !v)}
+              className="mt-1.5 text-xs font-medium text-primary hover:underline focus-visible:underline outline-none"
+            >
+              {summaryExpanded ? "See less" : "See more"}
+            </button>
+          )}
         </Card>
       )}
 
