@@ -159,6 +159,47 @@ function extractHttpStatus(err: unknown): number | undefined {
   return undefined;
 }
 
+// Transient network failure codes/markers that warrant a retry. These are
+// connectivity errors (DNS, connect/socket timeouts, resets) with no HTTP
+// status — `fetch` rejects before the server is ever reached.
+const TRANSIENT_NETWORK_MARKERS = [
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+  "UND_ERR_SOCKET",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EPIPE",
+];
+
+// Detects transient network errors (connect/read timeouts, DNS, resets, and our
+// own AbortController timeout) that have no HTTP status but should be retried.
+function isTransientNetworkError(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as Record<string, unknown>;
+
+  // Our REQUEST_TIMEOUT_MS abort surfaces as an AbortError.
+  if (e.name === "AbortError" || e.name === "TimeoutError") return true;
+
+  // undici raises `TypeError: fetch failed` and attaches the real cause.
+  const cause = e.cause as Record<string, unknown> | undefined;
+  const code = (e.code ?? cause?.code) as string | undefined;
+  if (typeof code === "string" && TRANSIENT_NETWORK_MARKERS.includes(code)) {
+    return true;
+  }
+
+  const haystacks = [e.message, cause?.message, cause?.code, e.name];
+  return haystacks.some(
+    (h) =>
+      typeof h === "string" &&
+      (h === "fetch failed" ||
+        TRANSIENT_NETWORK_MARKERS.some((m) => h.includes(m))),
+  );
+}
+
 // Sleeps for the given number of milliseconds.
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -218,6 +259,7 @@ async function reviewSingleChunk(
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
         const status = extractHttpStatus(err);
+        const networkError = isTransientNetworkError(err);
 
         if (
           (status === 429 || status === 413) &&
@@ -231,11 +273,13 @@ async function reviewSingleChunk(
           break;
         }
 
-        const isRetryable = status === 429 || status === 413 || status === 503;
+        const isRetryable =
+          status === 429 || status === 413 || status === 503 || networkError;
         if (isRetryable && attempt < MAX_RETRIES) {
           const delayMs = BASE_RETRY_DELAY_MS * 2 ** attempt;
+          const reason = status ? `${status} error` : "network error";
           console.warn(
-            `[AI Review] ${status} error. Waiting ${Math.round(delayMs / 1000)}s before retry...`,
+            `[AI Review] ${reason} (${lastError.message}). Waiting ${Math.round(delayMs / 1000)}s before retry...`,
           );
           await sleep(delayMs);
           continue;
