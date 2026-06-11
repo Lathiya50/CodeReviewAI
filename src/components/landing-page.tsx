@@ -103,48 +103,48 @@ const features = [
     title: "Instant AI Feedback",
     description:
       "Get comprehensive, actionable code reviews in seconds — not hours. No waiting, no back-and-forth.",
-    gradient: "from-yellow-500/20 to-orange-500/20",
-    iconColor: "text-yellow-400",
+    gradient: "from-primary/20 to-primary/5",
+    iconColor: "text-primary",
   },
   {
     icon: Shield,
     title: "Security Scanning",
     description:
       "Automatically detect vulnerabilities, secrets, and potential attack vectors before they hit production.",
-    gradient: "from-emerald-500/20 to-teal-500/20",
-    iconColor: "text-emerald-400",
+    gradient: "from-accent/20 to-accent/5",
+    iconColor: "text-accent",
   },
   {
     icon: MessageSquare,
     title: "Smart Suggestions",
     description:
       "Clear, contextual suggestions you can apply immediately. Inline comments right in your pull requests.",
-    gradient: "from-blue-500/20 to-cyan-500/20",
-    iconColor: "text-blue-400",
+    gradient: "from-primary/20 to-primary/5",
+    iconColor: "text-primary",
   },
   {
     icon: GitPullRequest,
     title: "GitHub Native",
     description:
       "Reviews appear directly in your pull requests as real GitHub review comments. Zero workflow changes.",
-    gradient: "from-purple-500/20 to-violet-500/20",
-    iconColor: "text-purple-400",
+    gradient: "from-accent/20 to-accent/5",
+    iconColor: "text-accent",
   },
   {
     icon: ScanSearch,
     title: "Context-Aware AI",
     description:
       "Understands your codebase patterns, naming conventions, and architectural intent at a deep level.",
-    gradient: "from-pink-500/20 to-rose-500/20",
-    iconColor: "text-pink-400",
+    gradient: "from-primary/20 to-primary/5",
+    iconColor: "text-primary",
   },
   {
     icon: Wand2,
     title: "Latest AI Models",
     description:
       "Powered by Groq's Llama 3.3 70B and OpenAI GPT-4o — always using the best available model.",
-    gradient: "from-violet-500/20 to-indigo-500/20",
-    iconColor: "text-violet-400",
+    gradient: "from-accent/20 to-accent/5",
+    iconColor: "text-accent",
   },
 ];
 
@@ -198,7 +198,7 @@ export function LandingPage() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: easeCubic }}
-        className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5"
+        className="fixed top-0 left-0 right-0 z-50 glass border-b border-border"
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5 group">
@@ -214,7 +214,7 @@ export function LandingPage() {
             {["Features", "How it works"].map((item) => (
               <button
                 key={item}
-                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-white/5"
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/60"
               >
                 {item}
               </button>
@@ -254,8 +254,8 @@ export function LandingPage() {
           <div className="absolute inset-0 bg-grid opacity-100" />
 
           {/* Radial fade overlay */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,oklch(0.67_0.23_280/18%),transparent)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_80%,oklch(0.72_0.19_200/10%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,oklch(0.62_0.19_272/18%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_80%,oklch(0.74_0.13_195/10%),transparent)]" />
 
           {/* Floating orbs */}
           <Orb
@@ -336,7 +336,7 @@ export function LandingPage() {
                 size="lg"
                 variant="outline"
                 asChild
-                className="h-12 px-7 border-white/10 bg-white/5 hover:bg-white/10 text-foreground transition-all duration-300"
+                className="h-12 px-7 bg-muted/40 hover:bg-muted/70 text-foreground transition-all duration-300"
               >
                 <Link href="/sign-in">
                   <GitHubIcon className="h-4 w-4" />
@@ -359,7 +359,7 @@ export function LandingPage() {
                 "Private repos supported",
               ].map((item) => (
                 <span key={item} className="flex items-center gap-1.5">
-                  <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle className="h-3.5 w-3.5 text-success shrink-0" />
                   {item}
                 </span>
               ))}
@@ -373,16 +373,16 @@ export function LandingPage() {
               custom={0.5}
               className="mt-16 mx-auto max-w-2xl"
             >
-              <div className="glass-card rounded-2xl p-5 sm:p-6 text-left shadow-2xl shadow-black/40 ring-1 ring-white/10">
+              <div className="glass-card rounded-2xl p-5 sm:p-6 text-left shadow-2xl ring-1 ring-border">
                 {/* Terminal dots */}
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
                   <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
+                    <div className="w-3 h-3 rounded-full bg-danger/70" />
+                    <div className="w-3 h-3 rounded-full bg-warning/70" />
+                    <div className="w-3 h-3 rounded-full bg-success/70" />
                   </div>
                   <div className="flex-1 flex justify-center">
-                    <span className="rounded-md bg-black/20 px-2.5 py-1 text-[11px] sm:text-xs text-foreground/85 font-mono tracking-wide">
+                    <span className="rounded-md bg-muted/50 px-2.5 py-1 text-[11px] sm:text-xs text-foreground/85 font-mono tracking-wide">
                       AI Review · PR #142 · auth/login.ts
                     </span>
                   </div>
@@ -390,8 +390,8 @@ export function LandingPage() {
 
                 {/* Mock review output */}
                 <div className="space-y-4 font-mono text-sm leading-relaxed">
-                  <div className="flex items-start gap-3 rounded-lg bg-black/10 p-2.5 sm:p-3">
-                    <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-red-500/20 text-red-300 text-[11px] font-semibold">
+                  <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-2.5 sm:p-3">
+                    <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-danger/15 text-danger text-[11px] font-semibold">
                       HIGH
                     </span>
                     <div>
@@ -405,8 +405,8 @@ export function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 rounded-lg bg-black/10 p-2.5 sm:p-3">
-                    <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300 text-[11px] font-semibold">
+                  <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-2.5 sm:p-3">
+                    <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-warning/15 text-warning text-[11px] font-semibold">
                       MED
                     </span>
                     <div>
@@ -419,8 +419,8 @@ export function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 rounded-lg bg-black/10 p-2.5 sm:p-3">
-                    <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold">
+                  <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-2.5 sm:p-3">
+                    <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-success/15 text-success text-[11px] font-semibold">
                       INFO
                     </span>
                     <div>
@@ -435,23 +435,23 @@ export function LandingPage() {
                 </div>
 
                 {/* Risk score bar */}
-                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between gap-4">
+                <div className="mt-5 pt-4 border-t border-border flex items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex justify-between text-xs sm:text-sm text-muted-foreground mb-1.5">
                       <span>Risk Score</span>
-                      <span className="text-red-300 font-semibold">78/100</span>
+                      <span className="text-danger font-semibold">78/100</span>
                     </div>
-                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: "78%" }}
                         transition={{ delay: 1, duration: 1.2, ease: "easeOut" }}
-                        className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-red-500"
+                        className="h-full rounded-full bg-gradient-to-r from-warning to-danger"
                       />
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                    <Star className="h-3.5 w-3.5 text-yellow-300" />
+                    <Star className="h-3.5 w-3.5 text-warning" />
                     <span className="font-mono">3 issues</span>
                   </div>
                 </div>
@@ -461,7 +461,7 @@ export function LandingPage() {
         </section>
 
         {/* ─── Stats ────────────────────────────────────────────────────── */}
-        <section className="relative border-y border-white/5 bg-white/2">
+        <section className="relative border-y border-border bg-muted/20">
           <div className="mx-auto max-w-6xl px-6 py-16">
             <RevealSection className="grid grid-cols-2 gap-8 lg:grid-cols-4">
               {stats.map((stat) => (
@@ -484,7 +484,7 @@ export function LandingPage() {
 
         {/* ─── Features ─────────────────────────────────────────────────── */}
         <section id="features" className="relative py-28">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,oklch(0.67_0.23_280/6%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,oklch(0.62_0.19_272/6%),transparent)]" />
 
           <div className="relative mx-auto max-w-6xl px-6">
             <RevealSection className="text-center mb-16">
@@ -513,7 +513,7 @@ export function LandingPage() {
                     custom={i * 0.05}
                     whileHover={{ y: -4, scale: 1.01 }}
                     transition={{ duration: 0.25 }}
-                    className="group relative rounded-2xl border border-white/6 bg-white/3 p-6 overflow-hidden cursor-default"
+                    className="group relative rounded-2xl border border-border bg-card/50 p-6 overflow-hidden cursor-default"
                   >
                     {/* Card glow on hover */}
                     <div
@@ -521,7 +521,7 @@ export function LandingPage() {
                     />
                     <div className="relative">
                       <div
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} ring-1 ring-white/8 mb-4`}
+                        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} ring-1 ring-border mb-4`}
                       >
                         <Icon className={`h-5 w-5 ${feature.iconColor}`} />
                       </div>
@@ -542,10 +542,10 @@ export function LandingPage() {
         {/* ─── How it works ─────────────────────────────────────────────── */}
         <section
           id="how-it-works"
-          className="relative py-28 border-t border-white/5"
+          className="relative py-28 border-t border-border"
         >
           <div className="absolute inset-0 bg-grid opacity-40" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_100%,oklch(0.72_0.19_200/8%),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_100%,oklch(0.74_0.13_195/8%),transparent)]" />
 
           <div className="relative mx-auto max-w-6xl px-6">
             <RevealSection className="text-center mb-16">
@@ -597,8 +597,8 @@ export function LandingPage() {
         </section>
 
         {/* ─── CTA Banner ───────────────────────────────────────────────── */}
-        <section className="relative py-28 border-t border-white/5 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_80%_at_50%_50%,oklch(0.67_0.23_280/12%),transparent)]" />
+        <section className="relative py-28 border-t border-border overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_80%_at_50%_50%,oklch(0.62_0.19_272/12%),transparent)]" />
           <Orb
             className="left-[10%] top-[20%] w-96 h-96 bg-primary/8 blur-3xl"
             delay={0}
@@ -654,7 +654,7 @@ export function LandingPage() {
       </main>
 
       {/* ─── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/5 py-10">
+      <footer className="border-t border-border py-10">
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2.5">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/25">

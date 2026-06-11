@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -33,7 +34,7 @@ import {
 function PRStateBadge({ state, merged }: { state: string; merged: boolean }) {
   if (merged) {
     return (
-      <Badge className="bg-purple-500/15 text-purple-500 border-purple-500/25 gap-1">
+      <Badge className="bg-primary/15 text-primary ring-1 ring-primary/25 gap-1">
         <GitMerge className="h-3 w-3" />
         Merged
       </Badge>
@@ -41,14 +42,14 @@ function PRStateBadge({ state, merged }: { state: string; merged: boolean }) {
   }
   if (state === "open") {
     return (
-      <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/25 gap-1">
+      <Badge variant="success" className="gap-1">
         <CircleDot className="h-3 w-3" />
         Open
       </Badge>
     );
   }
   return (
-    <Badge className="bg-red-500/15 text-red-500 border-red-500/25 gap-1">
+    <Badge variant="danger" className="gap-1">
       <GitPullRequest className="h-3 w-3" />
       Closed
     </Badge>
@@ -172,7 +173,7 @@ export default function PullRequestDetailPage({
       </div>
 
       {/* PR Header */}
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 mb-6">
+      <Card className="block p-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
@@ -224,12 +225,12 @@ export default function PullRequestDetailPage({
         {/* Stats row */}
         <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border/40">
           <div className="flex items-center gap-1.5 text-sm">
-            <Plus className="h-3.5 w-3.5 text-emerald-500" />
-            <span className="text-emerald-500 font-medium">{pr.additions}</span>
+            <Plus className="h-3.5 w-3.5 text-success" />
+            <span className="text-success font-medium">{pr.additions}</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
-            <Minus className="h-3.5 w-3.5 text-red-500" />
-            <span className="text-red-500 font-medium">{pr.deletions}</span>
+            <Minus className="h-3.5 w-3.5 text-danger" />
+            <span className="text-danger font-medium">{pr.deletions}</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <FileCode className="h-3.5 w-3.5" />
@@ -287,7 +288,7 @@ export default function PullRequestDetailPage({
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Tabs */}
       <AnimatedTabs
@@ -303,6 +304,10 @@ export default function PullRequestDetailPage({
           review ? (
             <ReviewResult
               review={review}
+              onRetry={() =>
+                triggerMutation.mutate({ repositoryId: id, prNumber: prNumberInt })
+              }
+              isRetrying={triggerMutation.isPending}
             />
           ) : (
             <EmptyState

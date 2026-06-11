@@ -2,14 +2,19 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+function Card({
+  className,
+  interactive = false,
+  ...props
+}: React.ComponentProps<"div"> & { interactive?: boolean }) {
   return (
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col border border-border/60",
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border border-border py-6 shadow-sm",
         "transition-all duration-200 ease-out",
-        "dark:bg-card dark:border-border/50",
+        interactive &&
+          "hover:-translate-y-0.5 hover:border-border hover:shadow-md cursor-pointer",
         className,
       )}
       {...props}
@@ -21,7 +26,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-header"
-      className={cn("flex flex-col gap-1.5 p-6", className)}
+      className={cn("flex flex-col gap-1.5 px-6", className)}
       {...props}
     />
   );

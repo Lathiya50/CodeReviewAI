@@ -10,6 +10,7 @@ import {
   Cell,
 } from "recharts";
 import { ChartSkeleton } from "@/components/shimmer-skeleton";
+import { Card } from "@/components/ui/card";
 
 interface TopIssuesProps {
   data: { category: string; count: number }[] | undefined;
@@ -17,8 +18,8 @@ interface TopIssuesProps {
 }
 
 const BAR_COLORS = [
-  "oklch(0.67 0.23 280)",
-  "oklch(0.72 0.19 200)",
+  "oklch(0.62 0.19 272)",
+  "oklch(0.74 0.13 195)",
   "oklch(0.65 0.2 240)",
   "oklch(0.62 0.2 310)",
   "oklch(0.75 0.16 160)",
@@ -37,14 +38,14 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function TopIssues({ data, isLoading }: TopIssuesProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <ChartSkeleton />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <h3 className="text-sm font-semibold mb-4">Top Issues</h3>
 
       {!data || data.length === 0 ? (
@@ -59,12 +60,12 @@ export function TopIssues({ data, isLoading }: TopIssuesProps) {
               layout="vertical"
               margin={{ top: 0, right: 5, left: 0, bottom: 0 }}
             >
-              <XAxis type="number" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" allowDecimals={false} />
+              <XAxis type="number" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.015 262)" allowDecimals={false} />
               <YAxis
                 type="category"
                 dataKey="category"
                 tick={{ fontSize: 11 }}
-                stroke="oklch(0.5 0.02 268)"
+                stroke="oklch(0.5 0.015 262)"
                 width={80}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -77,6 +78,6 @@ export function TopIssues({ data, isLoading }: TopIssuesProps) {
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

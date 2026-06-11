@@ -16,7 +16,7 @@ export default function OGImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#0a0a1a",
+          backgroundColor: "#06070d",
           fontFamily: "sans-serif",
           position: "relative",
           overflow: "hidden",
@@ -32,7 +32,7 @@ export default function OGImage() {
             height: 700,
             borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%)",
+              "radial-gradient(circle, rgba(97,120,247,0.2) 0%, transparent 70%)",
           }}
         />
         <div
@@ -44,7 +44,7 @@ export default function OGImage() {
             height: 500,
             borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)",
+              "radial-gradient(circle, rgba(0,196,196,0.15) 0%, transparent 70%)",
           }}
         />
 
@@ -70,7 +70,7 @@ export default function OGImage() {
                 width: 64,
                 height: 64,
                 borderRadius: 16,
-                background: "linear-gradient(135deg, #7c3aed, #6366f1, #06b6d4)",
+                background: "linear-gradient(135deg, #495CC9, #6178F7, #00C4C4)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -101,7 +101,7 @@ export default function OGImage() {
               CodeReview
               <span
                 style={{
-                  background: "linear-gradient(135deg, #a78bfa, #06b6d4)",
+                  background: "linear-gradient(135deg, #93A4FB, #00C4C4)",
                   backgroundClip: "text",
                   color: "transparent",
                 }}
@@ -141,11 +141,11 @@ export default function OGImage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    backgroundColor: "rgba(124,58,237,0.1)",
-                    border: "1px solid rgba(124,58,237,0.2)",
+                    backgroundColor: "rgba(97,120,247,0.1)",
+                    border: "1px solid rgba(97,120,247,0.2)",
                     borderRadius: 999,
                     padding: "8px 18px",
-                    color: "#c4b5fd",
+                    color: "#B3C0FC",
                     fontSize: 15,
                     fontWeight: 500,
                   }}
@@ -155,7 +155,7 @@ export default function OGImage() {
                       width: 8,
                       height: 8,
                       borderRadius: "50%",
-                      backgroundColor: "#22c55e",
+                      backgroundColor: "#40C786",
                     }}
                   />
                   {feature}

@@ -48,9 +48,9 @@ function SuggestionTypeBadge({ type }: { type: CodeSuggestion["type"] }) {
   };
 
   const colors = {
-    inline: "bg-blue-500/10 text-blue-500 ring-blue-500/20",
-    block: "bg-purple-500/10 text-purple-500 ring-purple-500/20",
-    refactor: "bg-amber-500/10 text-amber-500 ring-amber-500/20",
+    inline: "bg-info/10 text-info ring-info/20",
+    block: "bg-primary/10 text-primary ring-primary/20",
+    refactor: "bg-warning/10 text-warning ring-warning/20",
   };
 
   return (
@@ -118,9 +118,9 @@ function InlineComment({
   }
 
   const typeStyles = {
-    note: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    highlight: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    warning: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+    note: "bg-info/10 text-info border-info/20",
+    highlight: "bg-warning/10 text-warning border-warning/20",
+    warning: "bg-danger/10 text-danger border-danger/20",
   };
 
   const typeIcons = {
@@ -198,7 +198,7 @@ export function SuggestionDiffViewer({
           {suggestionType && <SuggestionTypeBadge type={suggestionType} />}
           {hint && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Lightbulb className="h-3 w-3 text-amber-500" />
+              <Lightbulb className="h-3 w-3 text-warning" />
               {hint}
             </span>
           )}

@@ -2,12 +2,23 @@ import { DEFAULT_PROVIDER, PROVIDER_CONFIGS, type ProviderName } from "@/constan
 import type { AiProvider, AiProviderConfig } from "./types";
 
 type ProviderFactory = () => AiProvider;
+// Builds a provider instance from an explicit (user-supplied) API key.
+type KeyedProviderFactory = (apiKey: string) => AiProvider;
 
 const providerFactories = new Map<string, ProviderFactory>();
+const keyedProviderFactories = new Map<string, KeyedProviderFactory>();
 
 // Registers a provider factory under the given name. Call once per provider at module-load time.
-export function registerProvider(name: string, factory: ProviderFactory): void {
+// `keyedFactory` builds a fresh instance from an explicit API key (used for BYO-key reviews).
+export function registerProvider(
+  name: string,
+  factory: ProviderFactory,
+  keyedFactory?: KeyedProviderFactory,
+): void {
   providerFactories.set(name, factory);
+  if (keyedFactory) {
+    keyedProviderFactories.set(name, keyedFactory);
+  }
 }
 
 // Returns the list of registered provider names.
@@ -54,10 +65,39 @@ export function resetProviderCache(): void {
   providerCache.clear();
 }
 
+// Resolves a provider for a review. If `apiKey` is given, builds a FRESH, UNCACHED
+// instance keyed by that user's key (never cached — a user key must not be reused
+// across users). With no key, falls back to the cached env-default provider.
+export function instantiateProvider(
+  name: ProviderName,
+  apiKey?: string,
+): AiProvider {
+  if (apiKey) {
+    const keyedFactory = keyedProviderFactories.get(name);
+    if (!keyedFactory) {
+      const available = Array.from(keyedProviderFactories.keys()).join(", ");
+      throw new Error(
+        `AI provider "${name}" does not support a user-supplied key. Available: ${available}.`,
+      );
+    }
+    return keyedFactory(apiKey);
+  }
+
+  return getProvider(name);
+}
+
 // ─── Register built-in providers ─────────────────────────────────────────────
 
-import { createGroqProvider } from "./providers/groq";
-import { createOpenAiProvider } from "./providers/openai";
+import { createGroqProvider, GroqProvider } from "./providers/groq";
+import { createOpenAiProvider, OpenAiProvider } from "./providers/openai";
+import { createAnthropicProvider, AnthropicProvider } from "./providers/anthropic";
+import { createGeminiProvider, GeminiProvider } from "./providers/gemini";
 
-registerProvider("groq", createGroqProvider);
-registerProvider("openai", createOpenAiProvider);
+registerProvider("groq", createGroqProvider, (apiKey) => new GroqProvider(apiKey));
+registerProvider("openai", createOpenAiProvider, (apiKey) => new OpenAiProvider(apiKey));
+registerProvider(
+  "anthropic",
+  createAnthropicProvider,
+  (apiKey) => new AnthropicProvider(apiKey),
+);
+registerProvider("gemini", createGeminiProvider, (apiKey) => new GeminiProvider(apiKey));

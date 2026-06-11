@@ -209,6 +209,201 @@ export async function fetchPullRequestFiles(
   return files;
 }
 
+// ─── Repository Webhooks ──────────────────────────────────────────────────────
+
+interface GitHubHook {
+  id: number;
+  config?: { url?: string };
+}
+
+const WEBHOOK_EVENTS = ["pull_request"] as const;
+
+/**
+ * Finds an existing repository webhook whose delivery URL matches `url`.
+ * Returns the hook id, or null if none is found / the lookup fails.
+ */
+async function findRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  url: string,
+): Promise<bigint | null> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks?per_page=100`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    },
+  );
+
+  if (!response.ok) return null;
+
+  const hooks = (await response.json()) as GitHubHook[];
+  const match = hooks.find((hook) => hook.config?.url === url);
+  return match ? BigInt(match.id) : null;
+}
+
+type WebhookConfig = {
+  url: string;
+  content_type: "json";
+  secret: string;
+  insecure_ssl: "0";
+};
+
+/** Maps a failed GitHub hooks API response to a descriptive Error. */
+function webhookError(status: number, body: string): Error {
+  // GitHub returns 404 (not 403) for hook endpoints when the token lacks the
+  // `admin:repo_hook` scope or the user is not a repo admin.
+  if (status === 403 || status === 404) {
+    return new Error(
+      "Insufficient permissions to manage webhooks. The connected GitHub account must be an admin of this repository, and you may need to reconnect GitHub to grant the `admin:repo_hook` scope.",
+    );
+  }
+  if (status === 401) {
+    return new Error(
+      "GitHub authorization expired. Please reconnect your GitHub account.",
+    );
+  }
+  return new Error(`Failed to register webhook (${status}): ${body}`);
+}
+
+/** PATCHes an existing hook so its delivery URL, events, and secret match ours. */
+async function patchRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  hookId: bigint,
+  config: WebhookConfig,
+): Promise<Response> {
+  return fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks/${hookId.toString()}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ active: true, events: WEBHOOK_EVENTS, config }),
+    },
+  );
+}
+
+/**
+ * Ensures a `pull_request` webhook exists on the repo, pointing at our endpoint
+ * with a per-repo HMAC secret. The operation is idempotent and self-healing:
+ *
+ *  1. If `existingHookId` is known, PATCH it — this re-points a hook whose URL
+ *     drifted (e.g. a rotated dev tunnel) and re-syncs the secret. A 404 means
+ *     it was deleted on GitHub, so we fall through and create a fresh one.
+ *  2. Otherwise POST a new hook.
+ *  3. On 422 (a hook for this URL already exists), locate it and PATCH so the
+ *     stored secret matches — keeping signature verification consistent.
+ *
+ * Returns the GitHub hook id. Throws a descriptive error on permission/auth
+ * failures so callers can surface it.
+ */
+export async function registerRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  options: { url: string; secret: string; existingHookId?: bigint | null },
+): Promise<bigint> {
+  const config: WebhookConfig = {
+    url: options.url,
+    content_type: "json",
+    secret: options.secret,
+    insecure_ssl: "0",
+  };
+
+  // 1. Re-sync a hook we already track. 404 => it's gone, fall through to create.
+  if (options.existingHookId != null) {
+    const patched = await patchRepoWebhook(
+      accessToken,
+      owner,
+      repo,
+      options.existingHookId,
+      config,
+    );
+    if (patched.ok) return options.existingHookId;
+    if (patched.status !== 404) {
+      throw webhookError(patched.status, await patched.text());
+    }
+  }
+
+  // 2. Create a new hook.
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "web",
+        active: true,
+        events: WEBHOOK_EVENTS,
+        config,
+      }),
+    },
+  );
+
+  if (response.ok) {
+    const data = (await response.json()) as { id: number };
+    return BigInt(data.id);
+  }
+
+  const errorBody = await response.text();
+
+  // 3. 422: a hook for this URL already exists. Reuse it and PATCH the secret.
+  if (response.status === 422) {
+    const existingId = await findRepoWebhook(accessToken, owner, repo, options.url);
+    if (existingId !== null) {
+      const patched = await patchRepoWebhook(
+        accessToken,
+        owner,
+        repo,
+        existingId,
+        config,
+      );
+      if (patched.ok) return existingId;
+      throw webhookError(patched.status, await patched.text());
+    }
+  }
+
+  throw webhookError(response.status, errorBody);
+}
+
+/**
+ * Deletes a repository webhook. A 404 (already gone) is treated as success.
+ */
+export async function deleteRepoWebhook(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  hookId: bigint,
+): Promise<void> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/hooks/${hookId.toString()}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    },
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to delete webhook (${response.status}): ${errorBody}`);
+  }
+}
+
 // ─── Inline PR Comments ───────────────────────────────────────────────────────
 
 export interface GitHubReviewComment {

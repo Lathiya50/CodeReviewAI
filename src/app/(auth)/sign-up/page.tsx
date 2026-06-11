@@ -51,6 +51,11 @@ export default function SignUpPage() {
       name,
       email,
       password,
+      fetchOptions: {
+        body: {
+          rememberMe: true,
+        },
+      },
     });
 
     if (result.error) {
@@ -67,6 +72,11 @@ export default function SignUpPage() {
     await signIn.social({
       provider: "github",
       callbackURL: "/repos",
+      fetchOptions: {
+        body: {
+          rememberMe: true,
+        },
+      },
     });
   };
 
@@ -249,7 +259,7 @@ export default function SignUpPage() {
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/15 px-3 py-2.5 text-sm text-red-200"
+                    className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger"
                   >
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>{error}</span>
@@ -277,7 +287,7 @@ export default function SignUpPage() {
 
               <div className="mt-6 rounded-xl border border-border/60 bg-background/65 p-3 text-xs text-muted-foreground">
                 <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                   No credit card required. You can switch to GitHub auth anytime.
                 </p>
               </div>

@@ -183,6 +183,19 @@ export interface AiModelConfig {
 export interface AiProviderConfig {
   name: string;
   models: AiModelConfig;
+  // Curated list of model ids selectable in the UI (includes primary/fallback).
+  availableModels: readonly string[];
   apiKeyEnvVar: string;
   apiKeySignupUrl: string;
+}
+
+// ─── Resolved per-user AI config (threaded into the review pipeline) ─────────
+
+// Effective config for a single review, resolved from a user's saved settings.
+// `apiKey` undefined => use the app's env-based default provider.
+export interface ResolvedAiConfig {
+  provider: import("@/constant/ai").ProviderName;
+  model?: string;
+  apiKey?: string;
+  customInstructions?: string;
 }

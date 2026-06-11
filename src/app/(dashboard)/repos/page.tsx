@@ -8,6 +8,8 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
 import { PageHeader } from "@/components/ui/page-header";
@@ -36,7 +38,11 @@ import {
   Globe,
   Loader2,
   CheckCircle,
+  CheckCircle2,
+  AlertCircle,
   GitPullRequest,
+  Webhook,
+  RefreshCw,
 } from "lucide-react";
 
 interface GithubRepo {
@@ -80,7 +86,7 @@ function RepoSelectItem({
             <span className="text-[10px] text-muted-foreground">{repo.language}</span>
           )}
           {repo.private ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+            <span className="flex items-center gap-0.5 text-[10px] text-warning">
               <Lock className="h-2.5 w-2.5" />
               Private
             </span>
@@ -96,15 +102,108 @@ function RepoSelectItem({
   );
 }
 
+type AutomationMode = "OFF" | "REVIEW_ONLY" | "COMMENT" | "REQUEST_CHANGES";
+
+type ConnectedRepo = {
+  id: string;
+  name: string;
+  fullName: string;
+  private: boolean;
+  webhookStatus: "NONE" | "ACTIVE" | "FAILED";
+  automationMode: AutomationMode;
+};
+
+// Single, explicit choice per repo. The first two never write to GitHub.
+const AUTOMATION_OPTIONS: {
+  value: AutomationMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "OFF",
+    label: "Off",
+    description: "No auto-review on push.",
+  },
+  {
+    value: "REVIEW_ONLY",
+    label: "Review only",
+    description: "Review in the dashboard — nothing posted to GitHub.",
+  },
+  {
+    value: "COMMENT",
+    label: "Comment on PR",
+    description: "Review + non-blocking inline comments on the PR.",
+  },
+  {
+    value: "REQUEST_CHANGES",
+    label: "Request changes",
+    description: "Review + a blocking “request changes” review.",
+  },
+];
+
+function WebhookStatusBadge({ status }: { status: ConnectedRepo["webhookStatus"] }) {
+  if (status === "ACTIVE") {
+    return (
+      <Badge variant="success" className="gap-1">
+        <CheckCircle2 className="h-2.5 w-2.5" />
+        Webhook active
+      </Badge>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <AlertCircle className="h-2.5 w-2.5" />
+        Webhook failed
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="gap-1">
+      <Webhook className="h-2.5 w-2.5" />
+      Webhook not set
+    </Badge>
+  );
+}
+
 function ConnectedRepoCard({
   repo,
   onDisconnect,
   isDisconnecting,
 }: {
-  repo: { id: string; name: string; fullName: string; private: boolean };
+  repo: ConnectedRepo;
   onDisconnect: () => void;
   isDisconnecting: boolean;
 }) {
+  const utils = trpc.useUtils();
+
+  // Local mirror of automation state so the selection feels instant; the server
+  // is the source of truth and a refetch reconciles after each mutation.
+  const [mode, setMode] = useState<AutomationMode>(repo.automationMode);
+
+  const setAutomation = trpc.repository.setAutomation.useMutation({
+    onSuccess: () => utils.repository.list.invalidate(),
+    onError: (error) => {
+      toast.error(error.message);
+      // Revert optimistic state to whatever the server last told us.
+      setMode(repo.automationMode);
+    },
+  });
+
+  const selectMode = (next: AutomationMode) => {
+    if (next === mode) return;
+    setMode(next);
+    setAutomation.mutate({ id: repo.id, automationMode: next });
+  };
+
+  const reconnect = trpc.repository.reconnectWebhook.useMutation({
+    onSuccess: () => {
+      utils.repository.list.invalidate();
+      toast.success("Webhook connected");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -136,8 +235,8 @@ function ConnectedRepoCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Disconnect repository?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove <strong>{repo.fullName}</strong> and all its
-                review data. This action cannot be undone.
+                This will remove <strong>{repo.fullName}</strong>, its webhook on
+                GitHub, and all its review data. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -158,18 +257,96 @@ function ConnectedRepoCard({
         </AlertDialog>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {repo.private ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500 ring-1 ring-amber-500/20">
+          <span className="inline-flex items-center gap-1 rounded-md bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning ring-1 ring-warning/20">
             <Lock className="h-2.5 w-2.5" />
             Private
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500 ring-1 ring-emerald-500/20">
+          <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success ring-1 ring-success/20">
             <Globe className="h-2.5 w-2.5" />
             Public
           </span>
         )}
+        <WebhookStatusBadge status={repo.webhookStatus} />
+      </div>
+
+      {/* Automation controls */}
+      <div className="mt-4 space-y-3 rounded-lg border border-border/40 bg-background/40 p-3">
+        {repo.webhookStatus !== "ACTIVE" && (
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              {repo.webhookStatus === "FAILED"
+                ? "Webhook setup failed. Reviews won't run on push."
+                : "No webhook yet. Set one up to auto-review pushes."}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs shrink-0"
+              onClick={() => reconnect.mutate({ id: repo.id })}
+              disabled={reconnect.isPending}
+            >
+              {reconnect.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              {repo.webhookStatus === "FAILED" ? "Reconnect" : "Set up"}
+            </Button>
+          </div>
+        )}
+
+        <div
+          role="radiogroup"
+          aria-label="Automation mode"
+          className="space-y-1.5"
+        >
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Automation
+          </p>
+          {AUTOMATION_OPTIONS.map((option) => {
+            const active = mode === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={setAutomation.isPending}
+                onClick={() => selectMode(option.value)}
+                className={`flex w-full items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-all disabled:opacity-60 ${
+                  active
+                    ? "border-primary/50 bg-primary/10"
+                    : "border-border/40 bg-card/40 hover:border-border/70 hover:bg-card/70"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                    active ? "border-primary" : "border-border/70"
+                  }`}
+                >
+                  {active && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span
+                    className={`block text-xs font-medium ${
+                      active ? "text-foreground" : "text-foreground/90"
+                    }`}
+                  >
+                    {option.label}
+                  </span>
+                  <span className="block text-[10px] leading-snug text-muted-foreground">
+                    {option.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -202,12 +379,19 @@ export default function ReposPage() {
     enabled: showImport,
   });
   const connectMutation = trpc.repository.connect.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       reposQuery.refetch();
       githubQuery.refetch();
       setSelected(new Set());
       setShowImport(false);
-      toast.success("Repositories connected successfully");
+      const failed = data.results.filter((r) => r.webhookStatus === "FAILED");
+      if (failed.length > 0) {
+        toast.warning(
+          `Connected, but webhook setup failed for ${failed.length} repo(s). Use "Reconnect" on the repo card.`,
+        );
+      } else {
+        toast.success("Repositories connected successfully");
+      }
     },
     onError: (error) => {
       toast.error(error.message);
@@ -307,7 +491,7 @@ export default function ReposPage() {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-6 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+            <Card className="block mt-6 p-5">
               {isGithubNotLinked ? (
                 <ConnectGithub />
               ) : (
@@ -387,7 +571,7 @@ export default function ReposPage() {
                   )}
                 </>
               )}
-            </div>
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>

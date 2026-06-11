@@ -314,13 +314,13 @@ export function getLineTypeClasses(type: "add" | "del" | "context" | "hunk"): {
 } {
   const classes = {
     add: {
-      bg: "bg-emerald-500/10 dark:bg-emerald-500/8",
-      text: "text-emerald-700 dark:text-emerald-400",
+      bg: "bg-success/10",
+      text: "text-success",
       marker: "+",
     },
     del: {
-      bg: "bg-red-500/10 dark:bg-red-500/8",
-      text: "text-red-700 dark:text-red-400",
+      bg: "bg-danger/10",
+      text: "text-danger",
       marker: "-",
     },
     context: {

@@ -1,7 +1,10 @@
-import type { ProviderName } from "@/constant/ai";
-import { getProvider, getProviderConfig } from "./registry";
-import type { FileChange, ReviewResult } from "./types";
+import { DEFAULT_PROVIDER } from "@/constant/ai";
+import { getProviderConfig, instantiateProvider } from "./registry";
+import type { FileChange, ResolvedAiConfig, ReviewResult } from "./types";
 import { ReviewResultSchema } from "./types";
+
+// Max characters of user-provided custom instructions injected into the prompt.
+const MAX_CUSTOM_INSTRUCTIONS_CHARS = 4_000;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -59,6 +62,26 @@ Code extraction rules:
 - Only include oldCode/newCode when you have a concrete code fix to suggest
 
 Respond ONLY with the JSON object, no markdown fences or extra text.`;
+
+// Builds the system prompt, optionally injecting user-provided custom
+// instructions inside a clearly delimited block. The JSON-output contract is
+// restated last so house rules can never override the structured-output format.
+function buildSystemPrompt(customInstructions?: string): string {
+  const trimmed = customInstructions?.trim();
+  if (!trimmed) return SYSTEM_PROMPT;
+
+  const capped = trimmed.slice(0, MAX_CUSTOM_INSTRUCTIONS_CHARS);
+
+  return `${SYSTEM_PROMPT}
+
+## Additional reviewer instructions (user-provided)
+The following are house rules from the user. Apply them where they do not conflict with the JSON output contract above.
+<instructions>
+${capped}
+</instructions>
+
+Reminder: Respond ONLY with the JSON object described above — no markdown fences or extra text.`;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -136,6 +159,47 @@ function extractHttpStatus(err: unknown): number | undefined {
   return undefined;
 }
 
+// Transient network failure codes/markers that warrant a retry. These are
+// connectivity errors (DNS, connect/socket timeouts, resets) with no HTTP
+// status — `fetch` rejects before the server is ever reached.
+const TRANSIENT_NETWORK_MARKERS = [
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+  "UND_ERR_SOCKET",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EPIPE",
+];
+
+// Detects transient network errors (connect/read timeouts, DNS, resets, and our
+// own AbortController timeout) that have no HTTP status but should be retried.
+function isTransientNetworkError(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as Record<string, unknown>;
+
+  // Our REQUEST_TIMEOUT_MS abort surfaces as an AbortError.
+  if (e.name === "AbortError" || e.name === "TimeoutError") return true;
+
+  // undici raises `TypeError: fetch failed` and attaches the real cause.
+  const cause = e.cause as Record<string, unknown> | undefined;
+  const code = (e.code ?? cause?.code) as string | undefined;
+  if (typeof code === "string" && TRANSIENT_NETWORK_MARKERS.includes(code)) {
+    return true;
+  }
+
+  const haystacks = [e.message, cause?.message, cause?.code, e.name];
+  return haystacks.some(
+    (h) =>
+      typeof h === "string" &&
+      (h === "fetch failed" ||
+        TRANSIENT_NETWORK_MARKERS.some((m) => h.includes(m))),
+  );
+}
+
 // Sleeps for the given number of milliseconds.
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -147,7 +211,7 @@ function sleep(ms: number): Promise<void> {
 async function reviewSingleChunk(
   prTitle: string,
   files: FileChange[],
-  providerName?: ProviderName,
+  config: ResolvedAiConfig,
 ): Promise<ReviewResult> {
   const userPrompt = buildUserPrompt(prTitle, files);
 
@@ -159,9 +223,16 @@ async function reviewSingleChunk(
     };
   }
 
-  const provider = getProvider(providerName);
-  const config = getProviderConfig(providerName ?? provider.name as ProviderName);
-  const modelsToTry = [config.models.primaryModel, config.models.fallbackModel];
+  const provider = instantiateProvider(config.provider, config.apiKey);
+  const providerConfig = getProviderConfig(config.provider);
+  const systemPrompt = buildSystemPrompt(config.customInstructions);
+
+  // Primary = user-selected model (if any) else the provider default. Fallback
+  // stays the provider's configured fallback. Dedupe so we don't retry the same model.
+  const primaryModel = config.model ?? providerConfig.models.primaryModel;
+  const modelsToTry = Array.from(
+    new Set([primaryModel, providerConfig.models.fallbackModel]),
+  );
 
   let lastError: Error | null = null;
 
@@ -175,7 +246,7 @@ async function reviewSingleChunk(
         const response = await provider.chat({
           model,
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
           temperature: 0.3,
@@ -188,11 +259,13 @@ async function reviewSingleChunk(
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
         const status = extractHttpStatus(err);
+        const networkError = isTransientNetworkError(err);
 
         if (
           (status === 429 || status === 413) &&
           attempt === 0 &&
-          model === config.models.primaryModel
+          model === primaryModel &&
+          modelsToTry.length > 1
         ) {
           console.warn(
             `[AI Review] Primary model hit ${status}. Switching to fallback model...`,
@@ -200,11 +273,13 @@ async function reviewSingleChunk(
           break;
         }
 
-        const isRetryable = status === 429 || status === 413 || status === 503;
+        const isRetryable =
+          status === 429 || status === 413 || status === 503 || networkError;
         if (isRetryable && attempt < MAX_RETRIES) {
           const delayMs = BASE_RETRY_DELAY_MS * 2 ** attempt;
+          const reason = status ? `${status} error` : "network error";
           console.warn(
-            `[AI Review] ${status} error. Waiting ${Math.round(delayMs / 1000)}s before retry...`,
+            `[AI Review] ${reason} (${lastError.message}). Waiting ${Math.round(delayMs / 1000)}s before retry...`,
           );
           await sleep(delayMs);
           continue;
@@ -221,11 +296,13 @@ async function reviewSingleChunk(
 }
 
 // Reviews PR code via AI provider. Chunks large diffs to avoid payload limits. Tries primary model then fallback; up to MAX_RETRIES with backoff. Validates JSON. Throws after retries exhausted.
+// `config` carries the resolved provider/model/key/instructions for this user (defaults to the app's default provider).
 export async function reviewCode(
   prTitle: string,
   files: FileChange[],
-  providerName?: ProviderName,
+  config?: ResolvedAiConfig,
 ): Promise<ReviewResult> {
+  const resolved: ResolvedAiConfig = config ?? { provider: DEFAULT_PROVIDER };
   const chunks = chunkFiles(files);
 
   if (chunks.length > 1) {
@@ -239,7 +316,7 @@ export async function reviewCode(
     console.log(
       `[AI Review] Reviewing chunk ${i + 1}/${chunks.length} (${chunks[i].length} files)`,
     );
-    results.push(await reviewSingleChunk(prTitle, chunks[i], providerName));
+    results.push(await reviewSingleChunk(prTitle, chunks[i], resolved));
   }
 
   return mergeResults(results);

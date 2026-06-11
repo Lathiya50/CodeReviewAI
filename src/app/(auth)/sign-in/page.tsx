@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -34,7 +33,6 @@ function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleEmailSignIn = async (e: { preventDefault(): void }) => {
@@ -42,7 +40,7 @@ function SignInForm() {
     setError("");
     setLoading(true);
 
-    const result = await signIn.email({ email, password, rememberMe });
+    const result = await signIn.email({ email, password, rememberMe: true });
 
     if (result.error) {
       setError(result.error.message || "Invalid credentials. Please try again.");
@@ -56,7 +54,15 @@ function SignInForm() {
     setError("");
     setLoading(true);
     await signOut();
-    await signIn.social({ provider: "github", callbackURL: callbackUrl });
+    await signIn.social({
+      provider: "github",
+      callbackURL: callbackUrl,
+      fetchOptions: {
+        body: {
+          rememberMe: true,
+        },
+      },
+    });
   };
 
   return (
@@ -217,25 +223,11 @@ function SignInForm() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor="rememberMe" className="flex cursor-pointer items-center gap-2 text-sm font-normal text-muted-foreground">
-                    <Checkbox
-                      id="rememberMe"
-                      checked={rememberMe}
-                      onCheckedChange={(value) => setRememberMe(Boolean(value))}
-                      disabled={loading}
-                      className="border-border/80 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                    />
-                    Keep me signed in
-                  </Label>
-                  <span className="text-xs text-muted-foreground">7-day session</span>
-                </div>
-
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/15 px-3 py-2.5 text-sm text-red-200"
+                    className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger"
                   >
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>{error}</span>
@@ -263,7 +255,7 @@ function SignInForm() {
 
               <div className="mt-6 rounded-xl border border-border/60 bg-background/65 p-3 text-xs text-muted-foreground">
                 <p className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                   You can connect repositories and run your first review in under 2 minutes.
                 </p>
               </div>

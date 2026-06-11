@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pnpm exec *)",
+      "PowerShell(pnpm db:generate *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(pnpm db:push *)",
+      "PowerShell(pnpm lint *)",
+      "PowerShell(pnpm build *)",
+      "PowerShell(npx tsc --noEmit)",
+      "mcp__ide__getDiagnostics",
+      "PowerShell(pnpm run *)"
+    ]
+  }
+}

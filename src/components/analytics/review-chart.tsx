@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ChartSkeleton } from "@/components/shimmer-skeleton";
+import { Card } from "@/components/ui/card";
 
 interface ReviewChartProps {
   data: { date: string; reviews: number }[] | undefined;
@@ -31,14 +32,14 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewChartProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+      <Card className="block p-5">
         <ChartSkeleton />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5">
+    <Card className="block p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold">Review Trend</h3>
         <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5">
@@ -60,18 +61,18 @@ export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewCha
             <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.67 0.23 280)" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="oklch(0.67 0.23 280)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="oklch(0.62 0.19 272)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="oklch(0.62 0.19 272)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.02 268 / 30%)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.5 0.02 268)" allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.012 262 / 30%)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="oklch(0.5 0.015 262)" />
+              <YAxis tick={{ fontSize: 11 }} stroke="oklch(0.5 0.015 262)" allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
               <Area
                 type="monotone"
                 dataKey="reviews"
-                stroke="oklch(0.67 0.23 280)"
+                stroke="oklch(0.62 0.19 272)"
                 strokeWidth={2}
                 fill="url(#chartGradient)"
               />
@@ -83,6 +84,6 @@ export function ReviewChart({ data, isLoading, range, onRangeChange }: ReviewCha
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

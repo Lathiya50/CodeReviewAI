@@ -26,9 +26,38 @@ model User {
 
   repositories Repository[]
   reviews      Review[]
+  aiSettings   UserAiSettings?
 
   @@unique([email])
   @@map("user")
+}
+
+model UserAiSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider AiProvider @default(GROQ) // GROQ | OPENAI | ANTHROPIC
+  model    String? // selected model id; null => provider default
+
+  // ── Encrypted API key (AES-256-GCM). Plaintext NEVER stored or returned. ──
+  apiKeyCiphertext String?     @db.Text // base64(iv):base64(authTag):base64(ciphertext)
+  apiKeyLast4      String? // last 4 chars, for masked display only
+  apiKeyProvider   AiProvider? // which provider the saved key belongs to
+
+  customInstructions String? @db.Text // appended to the system prompt (length-capped in app)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_ai_settings")
+}
+
+enum AiProvider {
+  GROQ
+  OPENAI
+  ANTHROPIC
+  GEMINI
 }
 
 model Session {
@@ -90,8 +119,42 @@ model Repository {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── Webhook + automation ──
+  webhookId     BigInt? // GitHub hook id, for update/delete
+  webhookSecret String? // per-repo HMAC secret (generated on register)
+  webhookStatus WebhookStatus @default(NONE) // NONE | ACTIVE | FAILED
+
+  // Single source of truth for automation behavior. New connects default to the
+  // safe REVIEW_ONLY mode — review in the dashboard, never write to GitHub until
+  // the user opts in. Derived into autoReview/autoPost/postEvent at the edges.
+  automationMode AutomationMode @default(REVIEW_ONLY)
+
+  // Legacy flags — kept during Phase A for backfill + DB-side consistency.
+  // Phase B (follow-up) drops these + the PostEvent enum once nothing reads them.
+  autoReviewEnabled Boolean   @default(true) // run review on push?
+  autoPostEnabled   Boolean   @default(true) // post result back to PR?
+  postEvent         PostEvent @default(COMMENT) // COMMENT | REQUEST_CHANGES
+
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews Review[]
+}
+
+enum WebhookStatus {
+  NONE
+  ACTIVE
+  FAILED
+}
+
+enum PostEvent {
+  COMMENT
+  REQUEST_CHANGES
+}
+
+enum AutomationMode {
+  OFF // do not auto-review on push
+  REVIEW_ONLY // review + save to dashboard; never write to GitHub
+  COMMENT // review + post non-blocking inline comments
+  REQUEST_CHANGES // review + post a blocking "request changes" review
 }
 
 model Review {
