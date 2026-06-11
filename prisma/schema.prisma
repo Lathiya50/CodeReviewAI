@@ -120,12 +120,20 @@ model Repository {
   updatedAt DateTime @updatedAt
 
   // ── Webhook + automation ──
-  webhookId         BigInt? // GitHub hook id, for update/delete
-  webhookSecret     String? // per-repo HMAC secret (generated on register)
-  webhookStatus     WebhookStatus @default(NONE) // NONE | ACTIVE | FAILED
-  autoReviewEnabled Boolean       @default(true) // run review on push?
-  autoPostEnabled   Boolean       @default(true) // post result back to PR?
-  postEvent         PostEvent     @default(COMMENT) // COMMENT | REQUEST_CHANGES
+  webhookId     BigInt? // GitHub hook id, for update/delete
+  webhookSecret String? // per-repo HMAC secret (generated on register)
+  webhookStatus WebhookStatus @default(NONE) // NONE | ACTIVE | FAILED
+
+  // Single source of truth for automation behavior. New connects default to the
+  // safe REVIEW_ONLY mode — review in the dashboard, never write to GitHub until
+  // the user opts in. Derived into autoReview/autoPost/postEvent at the edges.
+  automationMode AutomationMode @default(REVIEW_ONLY)
+
+  // Legacy flags — kept during Phase A for backfill + DB-side consistency.
+  // Phase B (follow-up) drops these + the PostEvent enum once nothing reads them.
+  autoReviewEnabled Boolean   @default(true) // run review on push?
+  autoPostEnabled   Boolean   @default(true) // post result back to PR?
+  postEvent         PostEvent @default(COMMENT) // COMMENT | REQUEST_CHANGES
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews Review[]
@@ -140,6 +148,13 @@ enum WebhookStatus {
 enum PostEvent {
   COMMENT
   REQUEST_CHANGES
+}
+
+enum AutomationMode {
+  OFF // do not auto-review on push
+  REVIEW_ONLY // review + save to dashboard; never write to GitHub
+  COMMENT // review + post non-blocking inline comments
+  REQUEST_CHANGES // review + post a blocking "request changes" review
 }
 
 model Review {

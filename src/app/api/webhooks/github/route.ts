@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/server/db";
 import { inngest } from "@/server/inngest";
+import { deriveAutomation } from "@/server/services/automation";
 
 interface PullRequestPayload {
   action: string;
@@ -106,27 +107,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
+  // Tag for log lines so the reason behind every 200 is greppable in prod logs.
+  // Most "webhook 200 but no review appeared" reports are an intentional skip
+  // here (a `push` event, a non-PR action, a draft, etc.) rather than a failure.
+  const ctx = `[gh-webhook] event=${event} action=${data.action ?? "-"} repo=${data.repository?.full_name ?? "-"} pr=${data.pull_request?.number ?? "-"}`;
+  const skip = (reason: string) => {
+    console.info(`${ctx} → skipped: ${reason}`);
+    return NextResponse.json({ message: reason }, { status: 200 });
+  };
+
   // GitHub sends a `ping` event when a webhook is first created.
   if (event === "ping") {
+    console.info(`${ctx} → pong`);
     return NextResponse.json({ message: "pong" }, { status: 200 });
   }
 
-  // Only handle pull_request events
+  // Only handle pull_request events. A plain `git push` sends a `push` event
+  // (ignored here); a review only runs when there is an OPEN PR for the branch,
+  // which is what fires the `pull_request` `synchronize` action below.
   if (event !== "pull_request") {
-    return NextResponse.json({ message: "Event ignored" }, { status: 200 });
+    return skip(`Event '${event}' ignored`);
   }
 
   // Only trigger on open, synchronize (new commits), or reopen
   if (!["opened", "synchronize", "reopened"].includes(data.action)) {
-    return NextResponse.json(
-      { message: `Action '${data.action}' ignored` },
-      { status: 200 },
-    );
+    return skip(`Action '${data.action}' ignored`);
   }
 
   // Skip draft PRs
   if (data.pull_request.draft) {
-    return NextResponse.json({ message: "Draft PR ignored" }, { status: 200 });
+    return skip("Draft PR ignored");
   }
 
   // Bot-loop guard. We only subscribe to `pull_request` (not
@@ -134,25 +144,18 @@ export async function POST(request: NextRequest) {
   // we still ignore GitHub App bot senders to avoid reacting to automation noise.
   const senderLogin = data.sender?.login ?? "";
   if (senderLogin.endsWith("[bot]")) {
-    return NextResponse.json(
-      { message: "Bot sender ignored" },
-      { status: 200 },
-    );
+    return skip(`Bot sender '${senderLogin}' ignored`);
   }
 
   if (!repository) {
-    return NextResponse.json(
-      { message: "Repository not connected" },
-      { status: 200 },
-    );
+    return skip("Repository not connected");
   }
 
-  // Respect the per-repo automation toggle.
-  if (!repository.autoReviewEnabled) {
-    return NextResponse.json(
-      { message: "Auto-review disabled for repository" },
-      { status: 200 },
-    );
+  // Respect the per-repo automation mode. OFF ⇒ no auto-review at all; every
+  // other mode runs the review (REVIEW_ONLY just skips the GitHub post later).
+  const automation = deriveAutomation(repository.automationMode);
+  if (!automation.autoReview) {
+    return skip("Auto-review disabled (mode OFF) for repository");
   }
 
   // Check if there's already a review in progress
@@ -165,10 +168,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (existingReview) {
-    return NextResponse.json(
-      { message: "Review already in progress" },
-      { status: 200 },
-    );
+    return skip("Review already in progress");
   }
 
   // Create a new review record
@@ -184,7 +184,8 @@ export async function POST(request: NextRequest) {
   });
 
   // Trigger the Inngest job. Auto-post is webhook-only — manual UI triggers keep
-  // their review-then-click flow and never set these flags.
+  // their review-then-click flow and never set these flags. The post behavior is
+  // derived from the repo's single automation mode.
   await inngest.send({
     name: "review/pr.requested",
     data: {
@@ -192,11 +193,14 @@ export async function POST(request: NextRequest) {
       repositoryId: repository.id,
       prNumber: data.pull_request.number,
       userId: repository.userId,
-      autoPost: repository.autoPostEnabled,
-      postEvent: repository.postEvent,
+      autoPost: automation.autoPost,
+      postEvent: automation.postEvent,
     },
   });
 
+  console.info(
+    `${ctx} → review triggered reviewId=${review.id} mode=${repository.automationMode} autoPost=${automation.autoPost}`,
+  );
   return NextResponse.json(
     { message: "Review triggered", reviewId: review.id },
     { status: 200 },

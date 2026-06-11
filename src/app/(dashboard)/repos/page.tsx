@@ -10,13 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { AnimatedPage } from "@/components/ui/animated-page";
 import { AnimatedList, AnimatedListItem } from "@/components/ui/animated-list";
 import { PageHeader } from "@/components/ui/page-header";
@@ -50,7 +43,6 @@ import {
   GitPullRequest,
   Webhook,
   RefreshCw,
-  ChevronDown,
 } from "lucide-react";
 
 interface GithubRepo {
@@ -110,16 +102,44 @@ function RepoSelectItem({
   );
 }
 
+type AutomationMode = "OFF" | "REVIEW_ONLY" | "COMMENT" | "REQUEST_CHANGES";
+
 type ConnectedRepo = {
   id: string;
   name: string;
   fullName: string;
   private: boolean;
   webhookStatus: "NONE" | "ACTIVE" | "FAILED";
-  autoReviewEnabled: boolean;
-  autoPostEnabled: boolean;
-  postEvent: "COMMENT" | "REQUEST_CHANGES";
+  automationMode: AutomationMode;
 };
+
+// Single, explicit choice per repo. The first two never write to GitHub.
+const AUTOMATION_OPTIONS: {
+  value: AutomationMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "OFF",
+    label: "Off",
+    description: "No auto-review on push.",
+  },
+  {
+    value: "REVIEW_ONLY",
+    label: "Review only",
+    description: "Review in the dashboard — nothing posted to GitHub.",
+  },
+  {
+    value: "COMMENT",
+    label: "Comment on PR",
+    description: "Review + non-blocking inline comments on the PR.",
+  },
+  {
+    value: "REQUEST_CHANGES",
+    label: "Request changes",
+    description: "Review + a blocking “request changes” review.",
+  },
+];
 
 function WebhookStatusBadge({ status }: { status: ConnectedRepo["webhookStatus"] }) {
   if (status === "ACTIVE") {
@@ -157,24 +177,24 @@ function ConnectedRepoCard({
 }) {
   const utils = trpc.useUtils();
 
-  // Local mirror of automation state so toggles feel instant; the server is the
-  // source of truth and a refetch reconciles after each mutation.
-  const [autoReview, setAutoReview] = useState(repo.autoReviewEnabled);
-  const [autoPost, setAutoPost] = useState(repo.autoPostEnabled);
-  const [postEvent, setPostEvent] = useState<ConnectedRepo["postEvent"]>(
-    repo.postEvent,
-  );
+  // Local mirror of automation state so the selection feels instant; the server
+  // is the source of truth and a refetch reconciles after each mutation.
+  const [mode, setMode] = useState<AutomationMode>(repo.automationMode);
 
   const setAutomation = trpc.repository.setAutomation.useMutation({
     onSuccess: () => utils.repository.list.invalidate(),
     onError: (error) => {
       toast.error(error.message);
       // Revert optimistic state to whatever the server last told us.
-      setAutoReview(repo.autoReviewEnabled);
-      setAutoPost(repo.autoPostEnabled);
-      setPostEvent(repo.postEvent);
+      setMode(repo.automationMode);
     },
   });
+
+  const selectMode = (next: AutomationMode) => {
+    if (next === mode) return;
+    setMode(next);
+    setAutomation.mutate({ id: repo.id, automationMode: next });
+  };
 
   const reconnect = trpc.repository.reconnectWebhook.useMutation({
     onSuccess: () => {
@@ -278,66 +298,54 @@ function ConnectedRepoCard({
           </div>
         )}
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={autoReview}
-            disabled={setAutomation.isPending}
-            onCheckedChange={(checked) => {
-              const value = checked === true;
-              setAutoReview(value);
-              setAutomation.mutate({ id: repo.id, autoReviewEnabled: value });
-            }}
-            className="border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-          <span className="text-xs">Auto-review on push</span>
-        </label>
-
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={autoPost}
-            disabled={setAutomation.isPending}
-            onCheckedChange={(checked) => {
-              const value = checked === true;
-              setAutoPost(value);
-              setAutomation.mutate({ id: repo.id, autoPostEnabled: value });
-            }}
-            className="border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-          <span className="text-xs">Post result to the PR</span>
-        </label>
-
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">Post as</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                disabled={!autoPost || setAutomation.isPending}
+        <div
+          role="radiogroup"
+          aria-label="Automation mode"
+          className="space-y-1.5"
+        >
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Automation
+          </p>
+          {AUTOMATION_OPTIONS.map((option) => {
+            const active = mode === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={setAutomation.isPending}
+                onClick={() => selectMode(option.value)}
+                className={`flex w-full items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-all disabled:opacity-60 ${
+                  active
+                    ? "border-primary/50 bg-primary/10"
+                    : "border-border/40 bg-card/40 hover:border-border/70 hover:bg-card/70"
+                }`}
               >
-                {postEvent === "REQUEST_CHANGES" ? "Request changes" : "Comment"}
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup
-                value={postEvent}
-                onValueChange={(value) => {
-                  const next = value as ConnectedRepo["postEvent"];
-                  setPostEvent(next);
-                  setAutomation.mutate({ id: repo.id, postEvent: next });
-                }}
-              >
-                <DropdownMenuRadioItem value="COMMENT">
-                  Comment
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="REQUEST_CHANGES">
-                  Request changes
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <span
+                  className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                    active ? "border-primary" : "border-border/70"
+                  }`}
+                >
+                  {active && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span
+                    className={`block text-xs font-medium ${
+                      active ? "text-foreground" : "text-foreground/90"
+                    }`}
+                  >
+                    {option.label}
+                  </span>
+                  <span className="block text-[10px] leading-snug text-muted-foreground">
+                    {option.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

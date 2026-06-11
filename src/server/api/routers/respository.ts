@@ -1,6 +1,7 @@
 import { z } from "zod";
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
+import { AutomationMode } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import {
   fetchGitHubRepos,
@@ -8,6 +9,7 @@ import {
   registerRepoWebhook,
   deleteRepoWebhook,
 } from "@/server/services/github";
+import { deriveAutomation } from "@/server/services/automation";
 
 /**
  * Resolves the public app URL GitHub must reach to deliver webhooks. Mirrors the
@@ -236,9 +238,7 @@ export const repositoryRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        autoReviewEnabled: z.boolean().optional(),
-        autoPostEnabled: z.boolean().optional(),
-        postEvent: z.enum(["COMMENT", "REQUEST_CHANGES"]).optional(),
+        automationMode: z.nativeEnum(AutomationMode),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -253,16 +253,18 @@ export const repositoryRouter = createTRPCRouter({
         });
       }
 
+      // `automationMode` is the single source of truth. We also write the derived
+      // legacy columns so the DB stays self-consistent during Phase A (they get
+      // dropped in the Phase B follow-up once nothing reads them).
+      const derived = deriveAutomation(input.automationMode);
+
       const updated = await ctx.db.repository.update({
         where: { id: input.id },
         data: {
-          ...(input.autoReviewEnabled !== undefined && {
-            autoReviewEnabled: input.autoReviewEnabled,
-          }),
-          ...(input.autoPostEnabled !== undefined && {
-            autoPostEnabled: input.autoPostEnabled,
-          }),
-          ...(input.postEvent !== undefined && { postEvent: input.postEvent }),
+          automationMode: input.automationMode,
+          autoReviewEnabled: derived.autoReview,
+          autoPostEnabled: derived.autoPost,
+          postEvent: derived.postEvent,
         },
       });
 
